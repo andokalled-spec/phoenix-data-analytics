@@ -1,0 +1,28 @@
+localDate,exerciseId,exerciseName,sets,workingReps,maxWeightPerCableKg,maxTotalLoadKg,totalVolumeKg
+2026-04-09,31ea9d9e-669c-4752-9f44-80c3fa864021,Bent Over Row,5,25,15.0,30.0,750.0
+2026-04-09,MUqWc_cySh8Szk49,High Bar Squat,5,25,30.0,60.0,1500.0
+2026-04-09,NmuYV1NROjrd0NaU,Neutral Grip Bench Press,5,25,15.0,30.0,750.0
+2026-04-11,e64c7837-52e2-4b97-b771-cf08ab861af1,Conventional Deadlift,2,10,22.0,44.0,270.0
+2026-04-11,MUqWc_cySh8Szk49,High Bar Squat,5,25,31.0,62.0,1510.0
+2026-04-11,e467f6b8-1e92-4571-b3e6-c020ca7099c3,Overhead Press,5,25,10.0,20.0,500.0
+2026-04-16,31ea9d9e-669c-4752-9f44-80c3fa864021,Bent Over Row,5,25,16.0,32.0,800.0
+2026-04-16,MUqWc_cySh8Szk49,High Bar Squat,5,25,31.5,63.0,1575.0
+2026-04-16,NmuYV1NROjrd0NaU,Neutral Grip Bench Press,5,25,16.0,32.0,800.0
+2026-04-27,31ea9d9e-669c-4752-9f44-80c3fa864021,Bent Over Row,5,25,16.0,32.0,800.0
+2026-04-27,MUqWc_cySh8Szk49,High Bar Squat,5,25,31.5,63.0,1575.0
+2026-04-27,NmuYV1NROjrd0NaU,Neutral Grip Bench Press,5,25,16.0,32.0,800.0
+2026-04-29,e64c7837-52e2-4b97-b771-cf08ab861af1,Conventional Deadlift,1,5,35.0,70.0,350.0
+2026-04-29,MUqWc_cySh8Szk49,High Bar Squat,5,25,32.5,65.0,1625.0
+2026-04-29,e467f6b8-1e92-4571-b3e6-c020ca7099c3,Overhead Press,5,25,10.0,20.0,500.0
+2026-05-13,31ea9d9e-669c-4752-9f44-80c3fa864021,Bent Over Row,5,25,17.0,34.0,850.0
+2026-05-13,MUqWc_cySh8Szk49,High Bar Squat,7,35,32.5,65.0,3251.5
+2026-05-13,NmuYV1NROjrd0NaU,Neutral Grip Bench Press,5,25,17.0,34.0,850.0
+2026-05-16,e64c7837-52e2-4b97-b771-cf08ab861af1,Conventional Deadlift,2,11,40.0,80.0,1449.4
+2026-05-16,MUqWc_cySh8Szk49,High Bar Squat,5,25,34.0,68.0,2360.0
+2026-05-16,e467f6b8-1e92-4571-b3e6-c020ca7099c3,Overhead Press,5,26,14.0,28.0,886.8
+2026-05-19,31ea9d9e-669c-4752-9f44-80c3fa864021,Bent Over Row,6,30,17.0,34.0,1314.0
+2026-05-19,MUqWc_cySh8Szk49,High Bar Squat,5,25,35.5,71.0,2420.0
+2026-05-19,NmuYV1NROjrd0NaU,Neutral Grip Bench Press,5,25,18.0,36.0,1041.0
+2026-05-21,e64c7837-52e2-4b97-b771-cf08ab861af1,Conventional Deadlift,2,10,42.5,85.0,1331.0
+2026-05-21,MUqWc_cySh8Szk49,High Bar Squat,5,25,36.0,72.0,2440.0
+2026-05-21,e467f6b8-1e92-4571-b3e6-c020ca7099c3,Overhead Press,5,25,14.0,28.0,909.0
