@@ -1,0 +1,5451 @@
+﻿[
+    {
+        "name":  "100s",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Active Copenhagen Plank",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Alternating Bent Over Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Alternating Bicep Curls ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Alternating Crossover Punch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Alternating Curtsy Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Curtsy Lunge ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Deficit Lunges",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Front Rack Curtsy Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Hammer Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Alternating Lunges",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Lunges ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Oblique Punch",
+        "aliases":  [
+                        "Alternating Oblique Sit Up"
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Alternating Plank Dips",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Alternating Renegade Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Alternating Reverse Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Side Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Suitcase Curtsy Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Alternating Suitcase Deficit Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Arms Crossed Front Squat ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Arnold Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Arnold Press (Out \u0026 Up)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Assisted Inchworm",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "B Stance Bar Rotation",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Balance Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Balance Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Bar Rotation",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Bat Crusher",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bayesian Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bayesian Curl",
+        "aliases":  [
+                        "Behind the back curl"
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bear Crawl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Bear Cross Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Bear Shoulder Tap",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Bench Press ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Bench Press - Wide Grip",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Bent Over Crossover Neutral Grip Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Crossover Rear Delt Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Bent Over Crossover Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Crossover Upright Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row - Reverse Grip",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row - Reverse Grip",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row - Reverse Grip ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row - Reverse Grip (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row - Wide Grip",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row - Wide Grip",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row - Wide Grip",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over Row SA",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Bent Over SA Lateral Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Bent Over Shrug",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Bent Over Tricep Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bicep Curl ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bicep Curl - Pronated",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bicep Curl - Pronated",
+        "aliases":  [
+                        "Overhand Bicep Curl"
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bicep Curl - Pronated",
+        "aliases":  [
+                        "Reverse Grip Bicep Curl"
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bicep Curl (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Bicycle Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Bird Dog",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Bird Dog Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Bird Dog Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Bulgarian Split Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Bulgarian Split Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Bulgarian Split Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Bulgarian Split Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Bulgarian Split Squat Pulse",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Bulgarian Split Squat Pulse",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Bulgarian Split Squat SC",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Bulgarian Split Squats",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Bulgarian Split Squats",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Burpee",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Burpee Jump Over Machine",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Burpee with Push-up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Butt Kicks",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Cable Fly",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Calf Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Calf Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Calf Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Calf Raise ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Calf Raise ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Calf Raise ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Calf Raise (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Chest Press - Gym Ball",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Clam Hip Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Close Grip Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Close Grip Pronated Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Close Grip Pulldown",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Close Grip Push Up",
+        "aliases":  [
+                        "Tricep Push Up"
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Close Grip Push Up ",
+        "aliases":  [
+                        "Tricep Push Up"
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Close Grip Supinated Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Commandos",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Concentration Curl ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Concentration Curl Deep Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Concentration Curl Deep Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Conventional Deadlift ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Copenhagen Plank",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Copenhagen Plank from Knee",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Copenhagen Plank w Knee Drive",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Cossack Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Crossover Deadlift to Upright Row ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crossover Lateral Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crossover Lateral Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crossover Lateral Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crossover Mountain Climber",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Crossover RDL",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Crossover Rear Delt Fly ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crossover Rear Delt Fly (Chest supported)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crossover Rear Delt Row - Single Arm",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crossover Single Arm Punch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crossover Sumo Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Crossover Sumo Squat to Upright Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crossover Upright Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Crunch \u0026 Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Crunch Isometric Hold",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Curl and Press",
+        "aliases":  [
+                        "Curl to Press"
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Curtsy Lunge (Front Rack)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Dead Bug SA Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Dead Bug SA Press (Staggered)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Deadlift to Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Deadlift to Row ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Deadlift to Row ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Decline Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Decline Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Decline Close Grip Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Decline Push Up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Deficit Lateral Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Deficit Lateral Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Deficit Lunge ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Deficit Lunge w/ Knee Drive",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Deficit Reverse Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Diamond Push up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Dive Push Up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Donkey Kicks",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Donkey Kicks",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Double Arm Front Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Double Leg Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Double Leg Raise (Bench Supported)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Double Leg Raise (Eccentric)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Double Leg Raise w/ Reverse Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Double Leg Raise w/ Reverse Crunch (Bench Supported)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Double Leg Raise w/ Reverse Crunch (Bench Supported)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Down Dog Calf Stretch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Face Pull",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Face Pulls",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Feet Raised 1 + 1/2 Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Feet Raised Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Fire Hydrant",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Floor Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Floor Press w/ Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Frog Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Frog Squats (Partial)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Alternating Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Alternating Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Alternating Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Alternating Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+
+                         ]
+    },
+    {
+        "name":  "Front Rack Alternating Lunges",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Bulgarian Split Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Bulgarian Split Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Curtsy Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Deficit Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Deficit Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+
+                         ]
+    },
+    {
+        "name":  "Front Rack Deficit Reverse Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Deficit Reverse Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Lunge ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Lunge ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Lunge Pulse",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Lunge Pulse",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Reverse Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Side Bend",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Front Rack Sit to Stand",
+        "aliases":  [
+                        "Box Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Sit to Stand",
+        "aliases":  [
+                        "Box Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Sit to Stand",
+        "aliases":  [
+                        "Box Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Squat",
+        "aliases":  [
+                        "Front Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Squat Pulses",
+        "aliases":  [
+                        "Quarter Rep Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Rack Sumo Squat",
+        "aliases":  [
+                        "Front Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Front Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Front Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Front Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Front Raise ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Front Raise (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Front Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Front Squat ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Fwd Hold SL Hamstring Stretch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+
+                         ]
+    },
+    {
+        "name":  "Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Glute Bridge ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Glute Bridge Hold",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Glute Bridge Isometric Hold",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Glute Kickbacks",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Goblet Bulgarian Split Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Goblet Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Goblet Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Goblet Reverse Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Goblet Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Goblet Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Goblet Squat ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Good Morning",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Good Morning",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Good Morning ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Gorilla Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Half Burpee",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Half Kneeling Punch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Half Kneeling SA Low Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Half Kneeling SA Press ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Half Kneeling SA Rear Delt Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Half Kneeling SA Tricep Extension ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Half Kneeling Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Hammer Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Hammer Curl ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Hammer Curl (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Hammer Curl SA",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Hamstring Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Heel Taps",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "High Bar Squat",
+        "aliases":  [
+                        "back squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "High Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "High Knees",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "High Knees w/Heel Tap",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "High Plank \u0026 Alternating Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "High Plank \u0026 Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "High Plank Down Dog Opp Toe Touch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "High Plank to Down Dog",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Hip Extension ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Hip Flexor Stretch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Hip Flexor Stretch w/ Side Bend",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Hip Lifts ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Hip Thrust",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Hip Thrust",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Hip Thrust ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Hip Thrust - Shoulders Elevated",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Hip Thrust (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Hip Thrust Pulses",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Inchworm",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Incline Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Incline Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Incline Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Incline Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Incline Fly",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Incline Pec Fly",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Incline Sit to Stand",
+        "aliases":  [
+                        "Box Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Incline Sit to Stand",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Jim Clarry\u0027s Face Pulls",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Jump Lunges ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Jumping Jacks",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Just Lift exercise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+
+                         ]
+    },
+    {
+        "name":  "Kneeling 45 Degree Kickback",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Kneeling 45 Degree Kickback ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Abduction",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Alternating Crossover Punch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Kickback",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Overhead Tricep Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Overhead Tricep Extension ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Pull Through",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Pull Through",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Row ",
+        "aliases":  [
+                        "Bench Supported Kneeling SA Row",
+                        "Single Arm Row"
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Kneeling Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Upward Chop",
+        "aliases":  [
+                        "kneeling upward twist"
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Upward Chop",
+        "aliases":  [
+                        "Kneeling Upward Twist"
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Upward Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Kneeling Upward Twist",
+        "aliases":  [
+                        "kneeling upward chop"
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lat Pullover",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Lat Pullover",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Lateral Jumps Over Trainer",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lateral Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lateral Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lateral Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lateral Raise ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lateral Shoot Through",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lawnmower SA Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Leg Lower",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Leg Lower w Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Leg Lower w/ Isometric Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Low Bar Squat ",
+        "aliases":  [
+                        "Back Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lunge",
+        "aliases":  [
+                        "Belt lunge"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lunge Pulses",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lunge w/ Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lunge w/ Knee Drive",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lunge w/ Shoulder Press ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lying External Shoulder Rotation",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lying External Shoulder Rotation",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lying External Shoulder Rotation",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lying Flys ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Lying Glute Kickback",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lying Hamstring Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lying Hamstring Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lying Leg Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lying Leg Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lying Leg Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lying Leg Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lying Leg Extension ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Lying Pec Fly",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Medial Delt Twist",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Medial Delt Twist",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Mountain Climber",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Muscle Clean \u0026 Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Neutral Grip Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Neutral Grip Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Neutral Grip Floor Press w/ Glute Bridge ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Neutral Grip SA Row ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Neutral SA Shoulder Press (Inside)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Outward Bicep Curl ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Outward SA Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Overhead Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Overhead Squat ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Overhead Tricep Bar Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Overhead Tricep Extension",
+        "aliases":  [
+                        "supinated tricep extension"
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Overhead Tricep Extension",
+        "aliases":  [
+                        "pronated tricep extension"
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Overhead Tricep Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Overhead Tricep Extension",
+        "aliases":  [
+                        "SA Overhead Tricep Extension"
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Overhead Tricep Extension ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Pallof Press ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Pidgeon Stretch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Pigeon (Assisted)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+
+                         ]
+    },
+    {
+        "name":  "Pike Push Up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Pistol Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Pistol Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Pistol Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Plank",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Plank \u0026 Rotation",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Plank Jacks",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Plank w/ Shoulder Tap",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Preacher Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Progressed Inchworm",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+
+                         ]
+    },
+    {
+        "name":  "Pronated Seated Wrist Curls",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Pronated Wrist Curls",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Prone Lat Pullover",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Pull Through",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Pull Through",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Pull-ups",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Pullover",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Pullover",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Pullover",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Pullover",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Pullover",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Push Up",
+        "aliases":  [
+                        "Belt Push Up"
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Push Up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Quadruped Oblique Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Quadruped Shoulder Taps",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Rack Pull",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Raf\u0027s Core Exercise",
+        "aliases":  [
+                        "Leg Lower",
+                        "Hip Lifts"
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Rear Delt Fly",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Rear Delt Fly",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Rear Delt Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Renegade Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Reverse Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Reverse Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Reverse Lunge (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Reverse Lunge w/ Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Romanian Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Romanian Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Romanian Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Romanian Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Russian Twist",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "SA Bench Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "SA Bent Over Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "SA Bent Over Row - Reverse Grip",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "SA Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "SA Bicycle Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "SA Crossover Squat \u0026 Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Curl and Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Floor Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "SA Hammer Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "SA Punch ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Rear Delt Fly Bench Supported",
+        "aliases":  [
+                        "Reverse Fly"
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Shoulder Press - Lunge Hold",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Shoulder Press (Inside)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Thruster",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Upper Cut",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SA Wrist Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "SA Wrist Curl",
+        "aliases":  [
+                        "Pronated Wrist Curl"
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Scorpion Stretch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Seated Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Seated Bicep Curl ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Seated Calf Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Seated Calf Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Seated Concentration Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Seated Leg Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Seated Overhead Tricep Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Seated Overhead Tricep Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Seated Rear Delt Row",
+        "aliases":  [
+                        "Wide grip row"
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Seated Row",
+        "aliases":  [
+                        "Underhand Seated Row",
+                        "Supinated Seated Row"
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Seated Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Seated Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Seated Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Seated Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Seated Row",
+        "aliases":  [
+                        "Reverse grip Seated Row",
+                        "Underhand Seated Row"
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Seated Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Seated SA Lateral Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated SA Oblique Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated SA Overhead Tricep Extension",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Seated SA Rear Delt Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated SA Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Seated SA Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated Shoulder Press ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Seated Spinal Twist",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Shoot Throughs",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Shoulder External Rotator",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Shoulder Press ",
+        "aliases":  [
+                        "Strict Press",
+                        "Bar Shoulder Press",
+                        "Bar Strict Press",
+                        "Overhead Press",
+                        "Military Press"
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Shoulder Press - Neutral Grip ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Shoulder Press (Inside)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Shrug",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Shrug",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Shrug ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Shuffle",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Side Bend",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Side Clam Hip Dips",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Side Jumps",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Side Lunge ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Side Lying Abduction",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Side Lying Hip Adduction",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Side Plank",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Side Plank Clam",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Side Plank Hip Abduction",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Side Plank Hip Dips",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Side Shuffle",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Single Leg Step Downs",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Sit to Stand",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Sit to Stand ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Sit Up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Sit up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Skaters",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Skull Crusher",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Skull Crusher",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Skull Crusher ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Skull Crusher ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Skull Crusher ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Skull Crusher ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Skullcrusher w/ Leg Lower",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "SL Bent Over SA Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Bicycle Crunch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "SL Calf Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Glute Bridge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Glute Bridge ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Glute Bridge ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Hamstring Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Hamstring Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Hip Thrust",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Hip Thrust",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Hip Thrust",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Hip Thrust",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Leg Lower",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "SL RDL w/ Knee Raise",
+        "aliases":  [
+                        "SL Romanian Deadlift"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL RDL w/ Knee Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Romanian Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Romanian Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Romanian Deadlift",
+        "aliases":  [
+                        "SL RDL"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Romanian Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Romanian Deadlift",
+        "aliases":  [
+                        "SL RDL",
+                        "Single Leg Deadlift",
+                        "Single Leg RDL"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "SL Stability Plank",
+        "aliases":  [
+                        "3 point Plank",
+                        "Three point plank"
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "SL Step Downs",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Snatch Grip Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Snatch Grip RDL",
+        "aliases":  [
+                        "Snatch Grip Romanian deadlift",
+                        "Romanian Deadlift",
+                        "Wide Grip Romanian Deadlift"
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Spiderman Plank",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Spiderman Push Up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Split Stance Deficit RDL ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Split Stance RDL",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Split Stance RDL",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Split Stance RDL",
+        "aliases":  [
+                        "B-Stance RDL",
+                        "Kickstand RDL",
+                        "Romanian Deadlift"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Split Stance RDL (SC)",
+        "aliases":  [
+                        "B-Stance RDL"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Split Stance RDL to Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Split Stance RDL to Row",
+        "aliases":  [
+                        "B-Stance RDL"
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Split Stance RDL to SA Row ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat ",
+        "aliases":  [
+                        "Belt Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat \u0026 Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "BACK",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Squat In \u0026 Out Jumps ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat Jumps",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat Jumps w/ Heel Tap",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat Pulses",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat Pulses",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat Pulses",
+        "aliases":  [
+                        "Partial Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat to Bicep Curl ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat to Calf Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat to Calf Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat to Shrug",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat to Sumo Squat Pulse ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Squat to Wood Chop",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Squat w/ Cross Knee Drive",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Standing 45 Degree Kickback",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Standing Abduction",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Standing Cable Flys",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST"
+                         ]
+    },
+    {
+        "name":  "Standing Glute Kickback",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Standing Hamstring Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Standing Hamstring Curl ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Standing Rotation",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Standing SL Hip Flexor March",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Standing Upward Twist",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Step Downs",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Step Overs",
+        "aliases":  [
+                        "Side Shuffle",
+                        "V-Form Shuffle",
+                        "Steps",
+                        "Lateral Shuffle"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Step Up w/ Knee Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Step up w/ Knee Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Stiff Leg Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Suitcase Deadlift ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Suitcase Deficit Reverse Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Suitcase Sit to Stand",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Suitcase SL RDL",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Suitcase Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Sumo Back Squat",
+        "aliases":  [
+                        "Back Squat"
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Sumo Belt Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Sumo Deadlift ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Sumo SA High Pull",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Superman",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Superman ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Superman Wipers",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Supinated Wrist Curls",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Supine Spinal Twist",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Table Top",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Table Top Hip Thrust",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Table Top Hip Thrust",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Table Top SA Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Three Stance Calf Raise",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Three Stance Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Thruster",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Thruster ",
+        "aliases":  [
+                        "Squat and Press",
+                        "Squat \u0026 Press",
+                        "Squat to press"
+                    ],
+        "muscleGroups":  [
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Toe Touches ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Torso Twist",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Trap Bar Deadlift",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Tricep Dip",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Tricep Dips",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Tricep Kick Back",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Tricep Kick Back",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Tricep Kick Back - Supported",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Tricep Push Up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS",
+                             "CHEST",
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Tricep Pushdown",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Tricep Stretch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+
+                         ]
+    },
+    {
+        "name":  "Tuck Jump",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Upright Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Upright Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Upright Row",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Upright Row ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Upright Row (SC)",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Upright Row to Shoulder Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Upright Shoulder External Rotator ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "V-Sit Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CHEST",
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "V-Tucks",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "V-Tucks",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "V-Up",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE"
+                         ]
+    },
+    {
+        "name":  "Walking Hamstring Scoop",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Wide Grip Bicep Curl ",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Wide Grip Pronated Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Wide Grip Pulldown",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK"
+                         ]
+    },
+    {
+        "name":  "Wide Grip Supinated Bicep Curl",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "ARMS"
+                         ]
+    },
+    {
+        "name":  "Windmill",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Windmill",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Wood Chop",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "CORE",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "World\u0027s Greatest Stretch",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "BACK",
+                             "CORE",
+                             "LEGS",
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Z-Press",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "SHOULDERS"
+                         ]
+    },
+    {
+        "name":  "Zercher Good Morning",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Zercher Lunge",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    },
+    {
+        "name":  "Zercher Squat",
+        "aliases":  [
+
+                    ],
+        "muscleGroups":  [
+                             "LEGS"
+                         ]
+    }
+]

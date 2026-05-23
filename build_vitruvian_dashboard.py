@@ -597,7 +597,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]], columns: list[str]) -> Non
         writer.writerows(rows)
 
 
-def dashboard_html(data_json: str) -> str:
+def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     template = r"""<!doctype html>
 <html lang="en">
 <head>
@@ -924,6 +924,34 @@ def dashboard_html(data_json: str) -> str:
     }
 
     #repOverlay { height: 430px; }
+    #muscleBalanceChart { height: 360px; }
+
+    .muscle-balance-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .muscle-balance-item {
+      display: grid;
+      gap: 4px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      min-width: 0;
+    }
+
+    .muscle-balance-item strong {
+      font-size: 12px;
+      color: var(--ink);
+    }
+
+    .muscle-balance-item span {
+      color: var(--muted);
+      font-size: 12px;
+    }
 
     .legend {
       display: flex;
@@ -1020,6 +1048,7 @@ def dashboard_html(data_json: str) -> str:
       .controls { justify-content: flex-start; }
       .kpis { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
       .grid { grid-template-columns: 1fr; }
+      .muscle-balance-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media (max-width: 560px) {
@@ -1031,6 +1060,7 @@ def dashboard_html(data_json: str) -> str:
       canvas, #repOverlay { height: 300px; }
       .control { width: 100%; }
       .switch-row { white-space: normal; }
+      .muscle-balance-list { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -1054,6 +1084,7 @@ def dashboard_html(data_json: str) -> str:
           <select id="historyWindow">
             <option value="5">Last 5 workouts</option>
             <option value="10" selected>Last 10 workouts</option>
+            <option value="20">Last 20 workouts</option>
             <option value="all">All workouts</option>
           </select>
         </div>
@@ -1089,7 +1120,7 @@ def dashboard_html(data_json: str) -> str:
         <div class="panel-head">
           <div>
             <h2>Total Reps Per Workout</h2>
-            <p class="panel-note">Grouped by routine workout and selected exercise.</p>
+            <p class="panel-note" id="repsChartNote">Grouped by routine workout and selected exercise.</p>
           </div>
         </div>
         <canvas id="repsChart"></canvas>
@@ -1113,7 +1144,7 @@ def dashboard_html(data_json: str) -> str:
         <div class="panel-head">
           <div>
             <h2>Volume And Estimated Strength</h2>
-            <p class="panel-note">Volume bars with estimated 1RM trend from completed working sets.</p>
+            <p class="panel-note" id="volumeChartNote">Volume bars with estimated 1RM trend from completed working sets.</p>
           </div>
         </div>
         <canvas id="volumeChart"></canvas>
@@ -1127,6 +1158,17 @@ def dashboard_html(data_json: str) -> str:
           </div>
         </div>
         <canvas id="velocityChart"></canvas>
+      </article>
+
+      <article class="panel wide">
+        <div class="panel-head">
+          <div>
+            <h2>Muscle Balance</h2>
+            <p class="panel-note" id="muscleBalanceNote">Relative training focus by body part.</p>
+          </div>
+        </div>
+        <canvas id="muscleBalanceChart"></canvas>
+        <div class="muscle-balance-list" id="muscleBalanceList"></div>
       </article>
 
       <article class="panel wide">
@@ -1150,23 +1192,7 @@ def dashboard_html(data_json: str) -> str:
         <div class="table-wrap">
           <table>
             <thead>
-              <tr>
-                <th>Date</th>
-                <th>Routine</th>
-                <th>Sets</th>
-                <th>Reps</th>
-                <th>Max Load</th>
-                <th class="group-separator">Echo Reps</th>
-                <th>Echo Median</th>
-                <th>Echo Avg</th>
-                <th>Echo Peak</th>
-                <th class="group-separator">Non-Echo Reps</th>
-                <th>Non-Echo Median</th>
-                <th>Non-Echo Avg</th>
-                <th>Volume</th>
-                <th>Est. 1RM</th>
-                <th>Avg MCV</th>
-              </tr>
+              <tr id="historyHeader"></tr>
             </thead>
             <tbody id="historyRows"></tbody>
           </table>
@@ -1178,23 +1204,78 @@ def dashboard_html(data_json: str) -> str:
 
   <script>
     let DATA = __DATA__;
+    const PROJECT_PHOENIX_EXERCISE_MUSCLE_MAP = __MUSCLE_MAP__;
 
     const palette = [
       "#2563eb", "#dc2626", "#0f766e", "#b45309", "#7c3aed",
       "#059669", "#be123c", "#0891b2", "#9333ea", "#ca8a04",
       "#1d4ed8", "#c2410c", "#047857", "#6d28d9", "#0e7490"
     ];
+    const MUSCLE_GROUP_ORDER = ["CHEST", "BACK", "SHOULDERS", "ARMS", "CORE", "LEGS"];
+    const EXERCISE_MUSCLE_WEIGHT_OVERRIDES = {
+      "high bar squat": [
+        { group: "LEGS", weight: 0.75 },
+        { group: "CORE", weight: 0.25 }
+      ],
+      "conventional deadlift": [
+        { group: "LEGS", weight: 0.40 },
+        { group: "BACK", weight: 0.30 },
+        { group: "CORE", weight: 0.30 }
+      ]
+    };
     const KG_TO_LB = 2.2046226218;
+    const CACHE_KEY = "vitruvianTrainingDashboardCache:v1";
+    const ALL_EXERCISES_ID = "__all_exercises__";
+
+    function loadCachedDashboard() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed?.data?.workoutExerciseSummary || !Array.isArray(parsed.data.exercises)) return null;
+        return parsed;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    const cachedDashboard = loadCachedDashboard();
+    if (cachedDashboard?.data) DATA = cachedDashboard.data;
+    const cachedSettings = cachedDashboard?.settings || {};
 
     const state = {
-      exerciseId: DATA.exercises[0]?.id || "",
-      loadBasis: "total",
-      loadUnit: "kg",
-      historyWindow: "10",
-      showLoadEchoMedian: false,
-      showLoadEchoAverage: false,
-      dimmedOverlayDates: new Set()
+      exerciseId: cachedSettings.exerciseId || ALL_EXERCISES_ID,
+      loadBasis: cachedSettings.loadBasis === "perCable" ? "perCable" : "total",
+      loadUnit: cachedSettings.loadUnit === "lbs" ? "lbs" : "kg",
+      historyWindow: ["5", "10", "20", "all"].includes(cachedSettings.historyWindow) ? cachedSettings.historyWindow : "10",
+      showLoadEchoMedian: Boolean(cachedSettings.showLoadEchoMedian),
+      showLoadEchoAverage: Boolean(cachedSettings.showLoadEchoAverage),
+      dimmedOverlayDates: new Set(Array.isArray(cachedSettings.dimmedOverlayDates) ? cachedSettings.dimmedOverlayDates : [])
     };
+
+    function dashboardCacheSettings() {
+      return {
+        exerciseId: state.exerciseId,
+        loadBasis: state.loadBasis,
+        loadUnit: state.loadUnit,
+        historyWindow: state.historyWindow,
+        showLoadEchoMedian: state.showLoadEchoMedian,
+        showLoadEchoAverage: state.showLoadEchoAverage,
+        dimmedOverlayDates: [...state.dimmedOverlayDates]
+      };
+    }
+
+    function saveDashboardCache() {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          data: DATA,
+          settings: dashboardCacheSettings(),
+          savedAt: new Date().toISOString()
+        }));
+      } catch (error) {
+        console.warn("Dashboard cache could not be saved", error);
+      }
+    }
 
     const exerciseSelect = document.getElementById("exerciseSelect");
     const backupFileInput = document.getElementById("backupFileInput");
@@ -1205,6 +1286,7 @@ def dashboard_html(data_json: str) -> str:
     const loadEchoAverageToggle = document.getElementById("loadEchoAverageToggle");
     const chartTooltip = document.getElementById("chartTooltip");
     const chartHitAreas = new Map();
+    const exerciseMuscleLookup = buildExerciseMuscleLookup();
 
     const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
 
@@ -1221,6 +1303,43 @@ def dashboard_html(data_json: str) -> str:
     function cleanName(value) {
       const text = String(value || "").trim();
       return text || "Unknown";
+    }
+
+    function normalizeExerciseName(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/\([^)]*\)/g, " ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function singularExerciseKey(value) {
+      return normalizeExerciseName(value)
+        .split(" ")
+        .map(word => word.length > 3 && word.endsWith("s") && !word.endsWith("ss") ? word.slice(0, -1) : word)
+        .join(" ");
+    }
+
+    function titleCaseGroup(group) {
+      const text = String(group || "").toLowerCase();
+      return text ? text.charAt(0).toUpperCase() + text.slice(1) : "Unknown";
+    }
+
+    function buildExerciseMuscleLookup() {
+      const lookup = new Map();
+      PROJECT_PHOENIX_EXERCISE_MUSCLE_MAP.forEach(entry => {
+        const groups = (entry.muscleGroups || []).map(group => String(group || "").toUpperCase()).filter(Boolean);
+        if (!groups.length) return;
+        [entry.name, ...(entry.aliases || [])].forEach(name => {
+          const key = normalizeExerciseName(name);
+          if (key && !lookup.has(key)) lookup.set(key, groups);
+          const singularKey = singularExerciseKey(name);
+          if (singularKey && !lookup.has(singularKey)) lookup.set(singularKey, groups);
+        });
+      });
+      return lookup;
     }
 
     function pad2(value) {
@@ -1778,7 +1897,7 @@ def dashboard_html(data_json: str) -> str:
     }
 
     function setupChartTooltips() {
-      ["repsChart", "loadChart", "volumeChart", "velocityChart"].forEach(id => {
+      ["repsChart", "loadChart", "volumeChart", "velocityChart", "muscleBalanceChart"].forEach(id => {
         const canvas = document.getElementById(id);
         canvas.addEventListener("mousemove", event => {
           const rect = canvas.getBoundingClientRect();
@@ -1822,14 +1941,31 @@ def dashboard_html(data_json: str) -> str:
       return state.loadBasis === "total" ? `total ${loadUnitText()}` : `${loadUnitText()} per cable`;
     }
 
+    function isAllExercises() {
+      return state.exerciseId === ALL_EXERCISES_ID;
+    }
+
+    function isValidExerciseId(exerciseId) {
+      return exerciseId === ALL_EXERCISES_ID || DATA.exercises.some(exercise => exercise.id === exerciseId);
+    }
+
+    function chartRowLabel(row) {
+      const base = row.label || row.localDate;
+      if (row.isAggregateTotal || row.isDailyTotal) return base;
+      return isAllExercises() ? `${base} - ${row.exerciseName || "Unknown"}` : base;
+    }
+
     function populateExerciseSelect() {
       const previous = state.exerciseId;
-      exerciseSelect.innerHTML = DATA.exercises.map(exercise =>
+      exerciseSelect.innerHTML = [
+        `<option value="${ALL_EXERCISES_ID}">All Exercises</option>`,
+        ...DATA.exercises.map(exercise =>
         `<option value="${exercise.id}">${exercise.name}</option>`
-      ).join("");
-      state.exerciseId = DATA.exercises.some(exercise => exercise.id === previous)
+        )
+      ].join("");
+      state.exerciseId = isValidExerciseId(previous)
         ? previous
-        : (DATA.exercises[0]?.id || "");
+        : ALL_EXERCISES_ID;
       exerciseSelect.value = state.exerciseId;
     }
 
@@ -1842,10 +1978,11 @@ def dashboard_html(data_json: str) -> str:
         const raw = JSON.parse(text);
         const nextData = buildDashboardData(raw);
         DATA = nextData;
-        state.exerciseId = DATA.exercises[0]?.id || "";
+        state.exerciseId = ALL_EXERCISES_ID;
         state.dimmedOverlayDates = new Set();
         populateExerciseSelect();
         document.querySelector("label[for='backupFileInput'].file-button").textContent = file.name;
+        saveDashboardCache();
         render();
       } catch (error) {
         sourceMeta.textContent = `Could not load ${file.name}: ${error.message}`;
@@ -1856,8 +1993,17 @@ def dashboard_html(data_json: str) -> str:
 
     function setupControls() {
       populateExerciseSelect();
+      historyWindow.value = state.historyWindow;
+      loadUnitToggle.checked = state.loadUnit === "lbs";
+      loadToggle.checked = state.loadBasis === "total";
+      loadEchoMedianToggle.checked = state.showLoadEchoMedian;
+      loadEchoAverageToggle.checked = state.showLoadEchoAverage;
+      if (cachedDashboard?.data) {
+        document.querySelector("label[for='backupFileInput'].file-button").textContent = "Cached data";
+      }
       exerciseSelect.addEventListener("change", () => {
         state.exerciseId = exerciseSelect.value;
+        saveDashboardCache();
         render();
       });
       backupFileInput.addEventListener("change", event => {
@@ -1865,30 +2011,35 @@ def dashboard_html(data_json: str) -> str:
       });
       historyWindow.addEventListener("change", () => {
         state.historyWindow = historyWindow.value;
+        saveDashboardCache();
         render();
       });
       loadUnitToggle.addEventListener("change", () => {
         state.loadUnit = loadUnitToggle.checked ? "lbs" : "kg";
+        saveDashboardCache();
         render();
       });
       loadToggle.addEventListener("change", () => {
         state.loadBasis = loadToggle.checked ? "total" : "perCable";
+        saveDashboardCache();
         render();
       });
       loadEchoMedianToggle.addEventListener("change", () => {
         state.showLoadEchoMedian = loadEchoMedianToggle.checked;
+        saveDashboardCache();
         render();
       });
       loadEchoAverageToggle.addEventListener("change", () => {
         state.showLoadEchoAverage = loadEchoAverageToggle.checked;
+        saveDashboardCache();
         render();
       });
     }
 
     function allRowsForExercise() {
       return DATA.workoutExerciseSummary
-        .filter(row => row.exerciseId === state.exerciseId)
-        .sort((a, b) => a.timestamp - b.timestamp);
+        .filter(row => isAllExercises() || row.exerciseId === state.exerciseId)
+        .sort((a, b) => a.timestamp - b.timestamp || String(a.exerciseName).localeCompare(String(b.exerciseName)));
     }
 
     function rowsForExercise() {
@@ -1897,7 +2048,67 @@ def dashboard_html(data_json: str) -> str:
       return rows.slice(-Number(state.historyWindow));
     }
 
+    function rowsForRepsChart() {
+      if (!isAllExercises()) return rowsForExercise();
+      const workoutRows = new Map();
+      allRowsForExercise().forEach(row => {
+        const key = row.workoutId || `${row.localDate || ""}::${row.routineName || ""}::${row.timestamp || ""}`;
+        if (!workoutRows.has(key)) {
+          workoutRows.set(key, {
+            workoutId: row.workoutId,
+            timestamp: row.timestamp,
+            localDate: row.localDate,
+            label: row.label || row.localDate,
+            routineName: row.routineName,
+            exerciseName: "All Exercises",
+            workingReps: 0,
+            isAggregateTotal: true
+          });
+        }
+        const workout = workoutRows.get(key);
+        workout.timestamp = Math.min(workout.timestamp, row.timestamp);
+        workout.workingReps += Number(row.workingReps || 0);
+      });
+      const rows = [...workoutRows.values()].sort((a, b) => a.timestamp - b.timestamp);
+      if (state.historyWindow === "all") return rows;
+      return rows.slice(-Number(state.historyWindow));
+    }
+
+    function rowsForVolumeChart() {
+      if (!isAllExercises()) return rowsForExercise();
+      const dailyRows = new Map();
+      allRowsForExercise().forEach(row => {
+        const key = row.localDate || row.label || "";
+        if (!dailyRows.has(key)) {
+          dailyRows.set(key, {
+            timestamp: row.timestamp,
+            localDate: row.localDate,
+            label: row.localDate,
+            exerciseName: "All Exercises",
+            totalVolumeKg: 0,
+            estimatedOneRepMaxKg: null,
+            isDailyTotal: true
+          });
+        }
+        const daily = dailyRows.get(key);
+        const estimatedOneRepMax = Number(row.estimatedOneRepMaxKg || 0);
+        daily.timestamp = Math.min(daily.timestamp, row.timestamp);
+        daily.totalVolumeKg += Number(row.totalVolumeKg || 0);
+        daily.estimatedOneRepMaxKg = Math.max(Number(daily.estimatedOneRepMaxKg || 0), estimatedOneRepMax) || null;
+      });
+      const rows = [...dailyRows.values()]
+        .map(row => ({
+          ...row,
+          totalVolumeKg: Math.round(row.totalVolumeKg * 100) / 100,
+          estimatedOneRepMaxKg: row.estimatedOneRepMaxKg === null ? null : Math.round(row.estimatedOneRepMaxKg * 100) / 100
+        }))
+        .sort((a, b) => a.timestamp - b.timestamp);
+      if (state.historyWindow === "all") return rows;
+      return rows.slice(-Number(state.historyWindow));
+    }
+
     function exerciseInfo() {
+      if (isAllExercises()) return { id: ALL_EXERCISES_ID, name: "All Exercises" };
       return DATA.exercises.find(exercise => exercise.id === state.exerciseId) || DATA.exercises[0];
     }
 
@@ -2059,7 +2270,7 @@ def dashboard_html(data_json: str) -> str:
             x,
             y,
             lines: [
-              row.label || row.localDate,
+              chartRowLabel(row),
               series.name,
               String(renderedValue)
             ]
@@ -2113,7 +2324,7 @@ def dashboard_html(data_json: str) -> str:
           y: y + (box.bottom - y) / 2,
           bounds: { left: x, right: x + barWidth, top: y, bottom: box.bottom },
           lines: [
-            row.label || row.localDate,
+            chartRowLabel(row),
             "Volume",
             fmtLoad(row.totalVolumeKg, 0)
           ]
@@ -2142,7 +2353,7 @@ def dashboard_html(data_json: str) -> str:
           x,
           y,
           lines: [
-            row.label || row.localDate,
+            chartRowLabel(row),
             "Est. 1RM",
             fmtLoad(row.estimatedOneRepMaxKg, 1)
           ]
@@ -2170,6 +2381,162 @@ def dashboard_html(data_json: str) -> str:
       setChartHitAreas(canvas, hitItems);
     }
 
+    function muscleGroupsForExercise(exerciseName) {
+      const key = normalizeExerciseName(exerciseName);
+      if (exerciseMuscleLookup.has(key)) return exerciseMuscleLookup.get(key);
+      const singularKey = singularExerciseKey(exerciseName);
+      return exerciseMuscleLookup.get(singularKey) || [];
+    }
+
+    function muscleGroupWeightsForExercise(exerciseName) {
+      const key = normalizeExerciseName(exerciseName);
+      const singularKey = singularExerciseKey(exerciseName);
+      const override = EXERCISE_MUSCLE_WEIGHT_OVERRIDES[key] || EXERCISE_MUSCLE_WEIGHT_OVERRIDES[singularKey];
+      if (override) return override;
+      const groups = muscleGroupsForExercise(exerciseName);
+      return groups.map(group => ({ group, weight: 1 / groups.length }));
+    }
+
+    function muscleBalanceData(rows) {
+      const groupTotals = new Map(MUSCLE_GROUP_ORDER.map(group => [group, 0]));
+      const groupExercises = new Map(MUSCLE_GROUP_ORDER.map(group => [group, new Set()]));
+      const unmatched = new Set();
+
+      rows.forEach(row => {
+        const groupWeights = muscleGroupWeightsForExercise(row.exerciseName);
+        if (!groupWeights.length) {
+          unmatched.add(row.exerciseName || "Unknown");
+          return;
+        }
+        const rawValue = Number(row.totalVolumeKg || 0);
+        if (!rawValue) return;
+        groupWeights.forEach(({ group, weight }) => {
+          if (!groupTotals.has(group)) {
+            groupTotals.set(group, 0);
+            groupExercises.set(group, new Set());
+          }
+          groupTotals.set(group, groupTotals.get(group) + rawValue * weight);
+          groupExercises.get(group).add(row.exerciseName || "Unknown");
+        });
+      });
+
+      const orderedGroups = [
+        ...MUSCLE_GROUP_ORDER,
+        ...[...groupTotals.keys()].filter(group => !MUSCLE_GROUP_ORDER.includes(group)).sort()
+      ];
+      const total = [...groupTotals.values()].reduce((sum, value) => sum + value, 0);
+      const maxValue = Math.max(...groupTotals.values(), 0);
+      const items = orderedGroups.map((group, idx) => {
+        const value = groupTotals.get(group) || 0;
+        return {
+          group,
+          label: titleCaseGroup(group),
+          value,
+          relative: maxValue ? value / maxValue : 0,
+          share: total ? value / total : 0,
+          exercises: [...(groupExercises.get(group) || [])].sort(),
+          color: palette[idx % palette.length]
+        };
+      });
+      return { items, total, maxValue, unmatched: [...unmatched].sort() };
+    }
+
+    function drawMuscleRadar(canvas, items) {
+      if (!items.some(item => item.value > 0)) {
+        drawEmpty(canvas, "No muscle-group matches found for this selection.");
+        return;
+      }
+      const { ctx, width, height } = canvasSetup(canvas);
+      const radius = Math.max(70, Math.min(width - 190, height - 72) / 2);
+      const centerX = width / 2;
+      const centerY = height / 2 + 8;
+      const labelRadius = radius + 38;
+      const angleStep = (Math.PI * 2) / items.length;
+      const hitItems = [];
+
+      ctx.strokeStyle = "#d9dee7";
+      ctx.lineWidth = 1;
+      for (let ring = 1; ring <= 5; ring++) {
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * ring / 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      items.forEach((item, idx) => {
+        const angle = idx * angleStep - Math.PI / 2;
+        const outerX = centerX + radius * Math.cos(angle);
+        const outerY = centerY + radius * Math.sin(angle);
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(outerX, outerY);
+        ctx.stroke();
+      });
+
+      ctx.beginPath();
+      items.forEach((item, idx) => {
+        const angle = idx * angleStep - Math.PI / 2;
+        const distance = radius * item.relative;
+        const x = centerX + distance * Math.cos(angle);
+        const y = centerY + distance * Math.sin(angle);
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = "rgba(37, 99, 235, 0.18)";
+      ctx.fill();
+      ctx.strokeStyle = "#2563eb";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.font = "12px Segoe UI, Arial";
+      items.forEach((item, idx) => {
+        const angle = idx * angleStep - Math.PI / 2;
+        const pointX = centerX + radius * item.relative * Math.cos(angle);
+        const pointY = centerY + radius * item.relative * Math.sin(angle);
+        ctx.fillStyle = item.value > 0 ? "#2563eb" : "#c9d1dc";
+        ctx.beginPath();
+        ctx.arc(pointX, pointY, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        const labelX = centerX + labelRadius * Math.cos(angle);
+        const labelY = centerY + labelRadius * Math.sin(angle);
+        ctx.fillStyle = "#475467";
+        ctx.textAlign = Math.cos(angle) > 0.25 ? "left" : (Math.cos(angle) < -0.25 ? "right" : "center");
+        ctx.textBaseline = Math.sin(angle) > 0.4 ? "top" : (Math.sin(angle) < -0.4 ? "bottom" : "middle");
+        ctx.fillText(item.label, labelX, labelY);
+
+        hitItems.push({
+          x: pointX,
+          y: pointY,
+          lines: [
+            item.label,
+            `Relative focus: ${fmtNumber(item.relative * 100, 0)}%`,
+            `Share: ${fmtNumber(item.share * 100, 0)}%`,
+            `Volume: ${fmtLoad(item.value, 0)}`,
+            `Exercises: ${item.exercises.length ? item.exercises.join(", ") : "-"}`
+          ]
+        });
+      });
+      setChartHitAreas(canvas, hitItems);
+    }
+
+    function renderMuscleBalance(rows) {
+      const balance = muscleBalanceData(rows);
+      drawMuscleRadar(document.getElementById("muscleBalanceChart"), balance.items);
+      const matchedCount = new Set(balance.items.flatMap(item => item.exercises)).size;
+      const unmatchedText = balance.unmatched.length
+        ? ` ${balance.unmatched.length} unmatched: ${balance.unmatched.slice(0, 4).join(", ")}${balance.unmatched.length > 4 ? ", ..." : ""}.`
+        : "";
+      document.getElementById("muscleBalanceNote").textContent =
+        `Relative focus from Project Phoenix muscle groups; ${matchedCount} matched exercise${matchedCount === 1 ? "" : "s"}.${unmatchedText}`;
+      document.getElementById("muscleBalanceList").innerHTML = balance.items.map(item => `
+        <div class="muscle-balance-item">
+          <strong>${item.label}</strong>
+          <span>${fmtNumber(item.share * 100, 0)}% share · ${fmtLoad(item.value, 0)}</span>
+        </div>
+      `).join("");
+    }
+
     function traceWorkoutId(trace) {
       return trace.routineSessionId || trace.sessionId;
     }
@@ -2184,13 +2551,16 @@ def dashboard_html(data_json: str) -> str:
 
     function renderRepOverlay(activeRows) {
       const canvas = document.getElementById("repOverlay");
-      const activeWorkoutIds = new Set(activeRows.map(row => row.workoutId));
+      const activeWorkoutExerciseKeys = new Set(activeRows.map(row => `${row.workoutId}::${row.exerciseId}`));
       const traces = DATA.repTraces
-        .filter(trace => trace.exerciseId === state.exerciseId && activeWorkoutIds.has(traceWorkoutId(trace)))
+        .filter(trace =>
+          (isAllExercises() || trace.exerciseId === state.exerciseId) &&
+          activeWorkoutExerciseKeys.has(`${traceWorkoutId(trace)}::${trace.exerciseId}`)
+        )
         .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
 
       if (!traces.length) {
-        drawEmpty(canvas, "No working rep traces were detected for this exercise.");
+        drawEmpty(canvas, "No working rep traces were detected for this selection.");
         document.getElementById("overlayLegend").innerHTML = "";
         return;
       }
@@ -2251,6 +2621,7 @@ def dashboard_html(data_json: str) -> str:
             } else {
               dates.forEach(date => state.dimmedOverlayDates.add(overlayDateKey(date)));
             }
+            saveDashboardCache();
             renderRepOverlay(activeRows);
             return;
           }
@@ -2258,49 +2629,73 @@ def dashboard_html(data_json: str) -> str:
           const key = overlayDateKey(date);
           if (state.dimmedOverlayDates.has(key)) state.dimmedOverlayDates.delete(key);
           else state.dimmedOverlayDates.add(key);
+          saveDashboardCache();
           renderRepOverlay(activeRows);
         });
       });
     }
 
     function renderHistoryTable(rows) {
+      document.getElementById("historyHeader").innerHTML = `
+        <th>Date</th>
+        ${isAllExercises() ? "<th>Exercise</th>" : ""}
+        <th>Routine</th>
+        <th>Sets</th>
+        <th>Reps</th>
+        <th>Max Load</th>
+        <th class="group-separator">Non-Echo Reps</th>
+        <th>Volume</th>
+        <th>Est. 1RM</th>
+        <th>Avg MCV</th>
+        <th class="group-separator">Echo Reps</th>
+        <th>Echo Median</th>
+        <th>Echo Avg</th>
+        <th>Echo Peak</th>
+      `;
       const newest = [...rows].sort((a, b) => b.timestamp - a.timestamp);
       document.getElementById("historyRows").innerHTML = newest.map(row => `
         <tr>
           <td>${row.label}</td>
+          ${isAllExercises() ? `<td>${row.exerciseName || "-"}</td>` : ""}
           <td>${row.routineName || "-"}</td>
           <td>${row.sets}</td>
           <td>${row.workingReps}</td>
           <td>${fmtLoad(row[loadField()], 1)}</td>
+          <td class="group-separator">${row.nonEchoRepCount || 0}</td>
+          <td>${fmtLoad(row.totalVolumeKg, 0)}</td>
+          <td>${fmtLoad(row.estimatedOneRepMaxKg, 1)}</td>
+          <td>${fmtNumber(row.avgMcvMmS, 1)} mm/s</td>
           <td class="group-separator">${row.echoRepCount || 0}</td>
           <td>${fmtLoad(row[bestEchoRepMedianLoadField()], 1)}</td>
           <td>${fmtLoad(row[bestEchoRepAverageLoadField()], 1)}</td>
           <td>${fmtLoad(row[bestEchoRepPeakLoadField()], 1)}</td>
-          <td class="group-separator">${row.nonEchoRepCount || 0}</td>
-          <td>${fmtLoad(row[bestNonEchoRepMedianLoadField()], 1)}</td>
-          <td>${fmtLoad(row[bestNonEchoRepAverageLoadField()], 1)}</td>
-          <td>${fmtLoad(row.totalVolumeKg, 0)}</td>
-          <td>${fmtLoad(row.estimatedOneRepMaxKg, 1)}</td>
-          <td>${fmtNumber(row.avgMcvMmS, 1)} mm/s</td>
         </tr>
       `).join("");
     }
 
     function render() {
       const rows = rowsForExercise();
+      const repsRows = rowsForRepsChart();
+      const volumeRows = rowsForVolumeChart();
       const source = DATA.metadata;
       document.getElementById("sourceMeta").textContent =
         `${source.validSessions} valid sessions, ${source.completedSets} completed sets, ${source.repTraces} working rep traces. Exported ${source.exportedAt}.`;
       const windowLabel = state.historyWindow === "all" ? "all workouts" : `last ${state.historyWindow} workouts`;
+      document.getElementById("repsChartNote").textContent = isAllExercises()
+        ? "Sum of all working reps across all exercises in each workout."
+        : "Grouped by routine workout and selected exercise.";
+      document.getElementById("volumeChartNote").textContent = isAllExercises()
+        ? "Daily total volume across all exercises; red line shows the best estimated 1RM that day."
+        : "Volume bars with estimated 1RM trend from completed working sets.";
       document.getElementById("loadProgressionNote").textContent =
         `Showing ${loadUnitLabel()} for ${windowLabel}, with incomplete and zero-rep sessions excluded.`;
       renderKpis(rows);
-      drawLineSeries(document.getElementById("repsChart"), rows, {
+      drawLineSeries(document.getElementById("repsChart"), repsRows, {
         yLabel: "working reps",
         zeroBase: true,
         digits: 0,
         series: [{
-          name: "Working reps",
+          name: isAllExercises() ? "Total working reps" : "Working reps",
           color: "#2563eb",
           value: row => row.workingReps,
           formatValue: value => `${fmtNumber(value, 0)} reps`
@@ -2335,7 +2730,7 @@ def dashboard_html(data_json: str) -> str:
         legend: loadSeries.length > 1,
         series: loadSeries
       });
-      drawBarLine(document.getElementById("volumeChart"), rows);
+      drawBarLine(document.getElementById("volumeChart"), volumeRows);
       drawLineSeries(document.getElementById("velocityChart"), rows.filter(row => row.avgMcvMmS !== null), {
         yLabel: "mm/s",
         zeroBase: false,
@@ -2347,6 +2742,7 @@ def dashboard_html(data_json: str) -> str:
           formatValue: value => `${fmtNumber(value, 1)} mm/s`
         }]
       });
+      renderMuscleBalance(rows);
       renderRepOverlay(rows);
       renderHistoryTable(rows);
     }
@@ -2355,11 +2751,12 @@ def dashboard_html(data_json: str) -> str:
     setupControls();
     setupChartTooltips();
     render();
+    saveDashboardCache();
   </script>
 </body>
 </html>
 """
-    return template.replace("__DATA__", data_json)
+    return template.replace("__DATA__", data_json).replace("__MUSCLE_MAP__", muscle_map_json)
 
 
 def main() -> None:
@@ -2380,14 +2777,25 @@ def main() -> None:
         default="vitruvian_tables",
         help="Directory for cleaned CSV table exports.",
     )
+    parser.add_argument(
+        "--exercise-map",
+        default="project_phoenix_exercise_muscle_map.json",
+        help="Project Phoenix exercise-to-muscle-group mapping JSON.",
+    )
     args = parser.parse_args()
 
     backup_path = Path(args.backup)
     output_path = Path(args.out)
     tables_dir = Path(args.tables_dir)
+    exercise_map_path = Path(args.exercise_map)
 
     with backup_path.open("r", encoding="utf-8") as handle:
         raw_data = json.load(handle)
+    if exercise_map_path.exists():
+        with exercise_map_path.open("r", encoding="utf-8-sig") as handle:
+            exercise_muscle_map = json.load(handle)
+    else:
+        exercise_muscle_map = []
 
     dashboard = build_tables(raw_data)
 
@@ -2421,7 +2829,8 @@ def main() -> None:
     )
 
     data_json = json.dumps(dashboard, separators=(",", ":"), ensure_ascii=False)
-    output_path.write_text(dashboard_html(data_json), encoding="utf-8")
+    muscle_map_json = json.dumps(exercise_muscle_map, separators=(",", ":"), ensure_ascii=False)
+    output_path.write_text(dashboard_html(data_json, muscle_map_json), encoding="utf-8")
 
     print(f"Wrote {output_path.resolve()}")
     print(f"Wrote CSV tables to {tables_dir.resolve()}")
