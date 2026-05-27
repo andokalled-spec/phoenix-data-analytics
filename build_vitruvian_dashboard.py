@@ -1175,7 +1175,17 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         <div class="panel-head">
           <div>
             <h2>Working Rep Load Overlay</h2>
-            <p class="panel-note">Load over time for working reps only. Colours identify the workout date.</p>
+            <p class="panel-note" id="repOverlayNote">Load over time for working reps only. Colours identify the workout date.</p>
+          </div>
+          <div class="chart-options" aria-label="Working rep overlay options">
+            <div class="mini-control">
+              <label for="repOverlayMode">Overlay</label>
+              <select id="repOverlayMode">
+                <option value="all">All</option>
+                <option value="maxAverage">Max average</option>
+                <option value="maxMedian">Max median</option>
+              </select>
+            </div>
           </div>
         </div>
         <canvas id="repOverlay"></canvas>
@@ -1250,6 +1260,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       historyWindow: ["5", "10", "20", "all"].includes(cachedSettings.historyWindow) ? cachedSettings.historyWindow : "10",
       showLoadEchoMedian: Boolean(cachedSettings.showLoadEchoMedian),
       showLoadEchoAverage: Boolean(cachedSettings.showLoadEchoAverage),
+      repOverlayMode: ["all", "maxAverage", "maxMedian"].includes(cachedSettings.repOverlayMode) ? cachedSettings.repOverlayMode : "all",
       dimmedOverlayDates: new Set(Array.isArray(cachedSettings.dimmedOverlayDates) ? cachedSettings.dimmedOverlayDates : [])
     };
 
@@ -1261,6 +1272,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         historyWindow: state.historyWindow,
         showLoadEchoMedian: state.showLoadEchoMedian,
         showLoadEchoAverage: state.showLoadEchoAverage,
+        repOverlayMode: state.repOverlayMode,
         dimmedOverlayDates: [...state.dimmedOverlayDates]
       };
     }
@@ -1284,6 +1296,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     const loadToggle = document.getElementById("loadToggle");
     const loadEchoMedianToggle = document.getElementById("loadEchoMedianToggle");
     const loadEchoAverageToggle = document.getElementById("loadEchoAverageToggle");
+    const repOverlayMode = document.getElementById("repOverlayMode");
     const chartTooltip = document.getElementById("chartTooltip");
     const chartHitAreas = new Map();
     const exerciseMuscleLookup = buildExerciseMuscleLookup();
@@ -1998,6 +2011,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       loadToggle.checked = state.loadBasis === "total";
       loadEchoMedianToggle.checked = state.showLoadEchoMedian;
       loadEchoAverageToggle.checked = state.showLoadEchoAverage;
+      repOverlayMode.value = state.repOverlayMode;
       if (cachedDashboard?.data) {
         document.querySelector("label[for='backupFileInput'].file-button").textContent = "Cached data";
       }
@@ -2031,6 +2045,11 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       });
       loadEchoAverageToggle.addEventListener("change", () => {
         state.showLoadEchoAverage = loadEchoAverageToggle.checked;
+        saveDashboardCache();
+        render();
+      });
+      repOverlayMode.addEventListener("change", () => {
+        state.repOverlayMode = repOverlayMode.value;
         saveDashboardCache();
         render();
       });
@@ -2549,16 +2568,62 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       return state.dimmedOverlayDates.has(overlayDateKey(date));
     }
 
+    function overlayRankField() {
+      if (state.repOverlayMode === "maxAverage") {
+        return state.loadBasis === "total" ? "avgTotalLoadKg" : "avgPerCableLoadKg";
+      }
+      if (state.repOverlayMode === "maxMedian") {
+        return state.loadBasis === "total" ? "medianTotalLoadKg" : "medianPerCableLoadKg";
+      }
+      return null;
+    }
+
+    function overlayModeLabel() {
+      if (state.repOverlayMode === "maxAverage") return "Max average";
+      if (state.repOverlayMode === "maxMedian") return "Max median";
+      return "All";
+    }
+
+    function traceModeKey(trace) {
+      return isEchoMode(trace.mode) ? "Echo" : "Non-echo";
+    }
+
+    function traceMetricValue(trace, field) {
+      const value = Number(trace[field]);
+      return Number.isFinite(value) ? value : -Infinity;
+    }
+
+    function selectRepOverlayTraces(traces) {
+      const field = overlayRankField();
+      if (!field) return traces.map(trace => ({ ...trace, overlayModeLabel: "All" }));
+      const bestByDateAndMode = new Map();
+      traces.forEach(trace => {
+        const key = `${trace.date}::${traceModeKey(trace)}`;
+        const current = bestByDateAndMode.get(key);
+        if (!current || traceMetricValue(trace, field) > traceMetricValue(current, field)) {
+          bestByDateAndMode.set(key, trace);
+        }
+      });
+      return [...bestByDateAndMode.values()]
+        .map(trace => ({ ...trace, overlayModeLabel: traceModeKey(trace) }))
+        .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime) || traceModeKey(a).localeCompare(traceModeKey(b)));
+    }
+
     function renderRepOverlay(activeRows) {
       const canvas = document.getElementById("repOverlay");
       const activeWorkoutExerciseKeys = new Set(activeRows.map(row => `${row.workoutId}::${row.exerciseId}`));
-      const traces = DATA.repTraces
+      const sourceTraces = DATA.repTraces
         .filter(trace =>
           (isAllExercises() || trace.exerciseId === state.exerciseId) &&
           activeWorkoutExerciseKeys.has(`${traceWorkoutId(trace)}::${trace.exerciseId}`)
         )
         .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+      const traces = selectRepOverlayTraces(sourceTraces);
 
+      document.getElementById("repOverlayNote").textContent =
+        state.repOverlayMode === "all"
+          ? "Load over time for all working reps. Colours identify the workout date."
+          : `${overlayModeLabel()} shows the top echo rep and top non-echo rep for each selected workout date. Echo traces are dashed.`;
       if (!traces.length) {
         drawEmpty(canvas, "No working rep traces were detected for this selection.");
         document.getElementById("overlayLegend").innerHTML = "";
@@ -2591,7 +2656,10 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       traces.forEach(trace => {
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         ctx.strokeStyle = `${color}${isOverlayDateDimmed(trace.date) ? "88" : "aa"}`;
-        ctx.lineWidth = isOverlayDateDimmed(trace.date) ? 1.1 : 1.4;
+        ctx.lineWidth = state.repOverlayMode === "all"
+          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
+          : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
+        ctx.setLineDash(state.repOverlayMode !== "all" && isEchoMode(trace.mode) ? [6, 4] : []);
         ctx.beginPath();
         trace.timeSec.forEach((time, idx) => {
           const x = xScale(time);
@@ -2601,6 +2669,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         });
         ctx.stroke();
       });
+      ctx.setLineDash([]);
 
       const allDatesDimmed = dates.every(date => isOverlayDateDimmed(date));
       const toggleAllLabel = allDatesDimmed ? "All on" : "All off";
