@@ -261,6 +261,8 @@ def segment_working_reps(
         times: list[float] = []
         per_cable_loads: list[float] = []
         total_loads: list[float] = []
+        positions_a: list[float] = []
+        positions_b: list[float] = []
         positions: list[float] = []
         velocities: list[float] = []
 
@@ -268,12 +270,16 @@ def segment_working_reps(
             row = segment[sample_idx]
             load_a = as_float(row.get("load"))
             load_b = as_float(row.get("loadB"), load_a)
+            position_a = as_float(row.get("position"))
+            position_b = as_float(row.get("positionB"), position_a)
             per_cable_load = (load_a + load_b) / 2 if cable_count >= 2 else load_a
             total_load = load_a + load_b if cable_count >= 2 else load_a
             times.append(round((as_int(row.get("timestamp")) - start_ms) / 1000, 3))
             per_cable_loads.append(round(per_cable_load, 2))
             total_loads.append(round(total_load, 2))
-            positions.append(round((as_float(row.get("position")) + as_float(row.get("positionB"))) / 2, 2))
+            positions_a.append(round(position_a, 2))
+            positions_b.append(round(position_b, 2))
+            positions.append(round((position_a + position_b) / 2, 2))
             velocities.append(round((as_float(row.get("velocity")) + as_float(row.get("velocityB"))) / 2, 2))
 
         traces.append(
@@ -301,6 +307,8 @@ def segment_working_reps(
                 "timeSec": times,
                 "perCableLoadKg": per_cable_loads,
                 "totalLoadKg": total_loads,
+                "positionA": positions_a,
+                "positionB": positions_b,
                 "position": positions,
                 "velocity": velocities,
                 "segmentationMethod": method,
@@ -923,8 +931,27 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       pointer-events: none;
     }
 
-    #repOverlay { height: 430px; }
+    #repOverlay, #positionOverlay { height: 430px; }
     #muscleBalanceChart { height: 360px; }
+
+    .phase-chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .phase-chart-title {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .phase-chart-grid canvas {
+      height: 330px;
+    }
 
     .muscle-balance-list {
       display: grid;
@@ -1048,6 +1075,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       .controls { justify-content: flex-start; }
       .kpis { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
       .grid { grid-template-columns: 1fr; }
+      .phase-chart-grid { grid-template-columns: 1fr; }
       .muscle-balance-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
@@ -1057,7 +1085,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       h1 { font-size: 22px; }
       .kpis { grid-template-columns: 1fr; }
       .panel-head { display: grid; }
-      canvas, #repOverlay { height: 300px; }
+      canvas, #repOverlay, #positionOverlay { height: 300px; }
       .control { width: 100%; }
       .switch-row { white-space: normal; }
       .muscle-balance-list { grid-template-columns: 1fr; }
@@ -1186,10 +1214,57 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
                 <option value="maxMedian">Max median</option>
               </select>
             </div>
+            <div class="mini-control">
+              <label for="repTypeFilter">Rep type</label>
+              <select id="repTypeFilter">
+                <option value="all">All</option>
+                <option value="nonEcho">Non echo</option>
+                <option value="echo">Echo</option>
+              </select>
+            </div>
           </div>
         </div>
         <canvas id="repOverlay"></canvas>
         <div class="legend" id="overlayLegend"></div>
+      </article>
+
+      <article class="panel wide">
+        <div class="panel-head">
+          <div>
+            <h2>Working Rep Position Overlay</h2>
+            <p class="panel-note" id="positionOverlayNote">Left and right cable position over time for the selected working reps.</p>
+          </div>
+          <div class="chart-options" aria-label="Working rep position overlay options">
+            <div class="mini-control">
+              <label for="positionOverlayBasis">Position</label>
+              <select id="positionOverlayBasis">
+                <option value="average">Average</option>
+                <option value="left">Left cable</option>
+                <option value="right">Right cable</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <canvas id="positionOverlay"></canvas>
+      </article>
+
+      <article class="panel wide">
+        <div class="panel-head">
+          <div>
+            <h2>Load vs Position</h2>
+            <p class="panel-note" id="loadPositionNote">Load against cable position for the same selected working reps.</p>
+          </div>
+        </div>
+        <div class="phase-chart-grid">
+          <div>
+            <h3 class="phase-chart-title">Concentric</h3>
+            <canvas id="concentricLoadPositionChart"></canvas>
+          </div>
+          <div>
+            <h3 class="phase-chart-title">Eccentric</h3>
+            <canvas id="eccentricLoadPositionChart"></canvas>
+          </div>
+        </div>
       </article>
 
       <article class="panel wide">
@@ -1243,6 +1318,9 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (!parsed?.data?.workoutExerciseSummary || !Array.isArray(parsed.data.exercises)) return null;
+        const hasPositionChannels = !parsed.data.repTraces?.length ||
+          parsed.data.repTraces.some(trace => Array.isArray(trace.positionA) && Array.isArray(trace.positionB));
+        if (!hasPositionChannels) return { settings: parsed.settings || {} };
         return parsed;
       } catch (error) {
         return null;
@@ -1261,6 +1339,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       showLoadEchoMedian: Boolean(cachedSettings.showLoadEchoMedian),
       showLoadEchoAverage: Boolean(cachedSettings.showLoadEchoAverage),
       repOverlayMode: ["all", "maxAverage", "maxMedian"].includes(cachedSettings.repOverlayMode) ? cachedSettings.repOverlayMode : "all",
+      repTypeFilter: ["all", "echo", "nonEcho"].includes(cachedSettings.repTypeFilter) ? cachedSettings.repTypeFilter : "all",
+      positionOverlayBasis: ["left", "right", "average"].includes(cachedSettings.positionOverlayBasis) ? cachedSettings.positionOverlayBasis : "average",
       dimmedOverlayDates: new Set(Array.isArray(cachedSettings.dimmedOverlayDates) ? cachedSettings.dimmedOverlayDates : [])
     };
 
@@ -1273,6 +1353,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         showLoadEchoMedian: state.showLoadEchoMedian,
         showLoadEchoAverage: state.showLoadEchoAverage,
         repOverlayMode: state.repOverlayMode,
+        repTypeFilter: state.repTypeFilter,
+        positionOverlayBasis: state.positionOverlayBasis,
         dimmedOverlayDates: [...state.dimmedOverlayDates]
       };
     }
@@ -1297,6 +1379,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     const loadEchoMedianToggle = document.getElementById("loadEchoMedianToggle");
     const loadEchoAverageToggle = document.getElementById("loadEchoAverageToggle");
     const repOverlayMode = document.getElementById("repOverlayMode");
+    const repTypeFilter = document.getElementById("repTypeFilter");
+    const positionOverlayBasis = document.getElementById("positionOverlayBasis");
     const chartTooltip = document.getElementById("chartTooltip");
     const chartHitAreas = new Map();
     const exerciseMuscleLookup = buildExerciseMuscleLookup();
@@ -1556,16 +1640,22 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         const times = [];
         const perCableLoads = [];
         const totalLoads = [];
+        const positionsA = [];
+        const positionsB = [];
         const positions = [];
         const velocities = [];
         selected.forEach(sampleIdx => {
           const row = segment[sampleIdx];
           const loadA = asNumber(row.load);
           const loadB = asNumber(row.loadB, loadA);
+          const positionA = asNumber(row.position);
+          const positionB = asNumber(row.positionB, positionA);
           times.push(roundOrNull((asInt(row.timestamp) - startMs) / 1000, 3));
           perCableLoads.push(roundOrNull(cableCount >= 2 ? (loadA + loadB) / 2 : loadA, 2));
           totalLoads.push(roundOrNull(cableCount >= 2 ? loadA + loadB : loadA, 2));
-          positions.push(roundOrNull((asNumber(row.position) + asNumber(row.positionB)) / 2, 2));
+          positionsA.push(roundOrNull(positionA, 2));
+          positionsB.push(roundOrNull(positionB, 2));
+          positions.push(roundOrNull((positionA + positionB) / 2, 2));
           velocities.push(roundOrNull((asNumber(row.velocity) + asNumber(row.velocityB)) / 2, 2));
         });
 
@@ -1593,6 +1683,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
           timeSec: times,
           perCableLoadKg: perCableLoads,
           totalLoadKg: totalLoads,
+          positionA: positionsA,
+          positionB: positionsB,
           position: positions,
           velocity: velocities,
           segmentationMethod: detected.method
@@ -2012,6 +2104,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       loadEchoMedianToggle.checked = state.showLoadEchoMedian;
       loadEchoAverageToggle.checked = state.showLoadEchoAverage;
       repOverlayMode.value = state.repOverlayMode;
+      repTypeFilter.value = state.repTypeFilter;
+      positionOverlayBasis.value = state.positionOverlayBasis;
       if (cachedDashboard?.data) {
         document.querySelector("label[for='backupFileInput'].file-button").textContent = "Cached data";
       }
@@ -2050,6 +2144,16 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       });
       repOverlayMode.addEventListener("change", () => {
         state.repOverlayMode = repOverlayMode.value;
+        saveDashboardCache();
+        render();
+      });
+      repTypeFilter.addEventListener("change", () => {
+        state.repTypeFilter = repTypeFilter.value;
+        saveDashboardCache();
+        render();
+      });
+      positionOverlayBasis.addEventListener("change", () => {
+        state.positionOverlayBasis = positionOverlayBasis.value;
         saveDashboardCache();
         render();
       });
@@ -2588,6 +2692,24 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       return isEchoMode(trace.mode) ? "Echo" : "Non-echo";
     }
 
+    function repTypeFilterLabel() {
+      if (state.repTypeFilter === "echo") return "Echo reps";
+      if (state.repTypeFilter === "nonEcho") return "Non-echo reps";
+      return "All rep types";
+    }
+
+    function maxRepTypeDescription() {
+      if (state.repTypeFilter === "echo") return "top echo rep";
+      if (state.repTypeFilter === "nonEcho") return "top non-echo rep";
+      return "top echo rep and top non-echo rep";
+    }
+
+    function traceMatchesRepTypeFilter(trace) {
+      if (state.repTypeFilter === "echo") return isEchoMode(trace.mode);
+      if (state.repTypeFilter === "nonEcho") return !isEchoMode(trace.mode);
+      return true;
+    }
+
     function traceMetricValue(trace, field) {
       const value = Number(trace[field]);
       return Number.isFinite(value) ? value : -Infinity;
@@ -2609,21 +2731,25 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime) || traceModeKey(a).localeCompare(traceModeKey(b)));
     }
 
-    function renderRepOverlay(activeRows) {
-      const canvas = document.getElementById("repOverlay");
+    function selectedOverlayTraces(activeRows) {
       const activeWorkoutExerciseKeys = new Set(activeRows.map(row => `${row.workoutId}::${row.exerciseId}`));
       const sourceTraces = DATA.repTraces
         .filter(trace =>
           (isAllExercises() || trace.exerciseId === state.exerciseId) &&
+          traceMatchesRepTypeFilter(trace) &&
           activeWorkoutExerciseKeys.has(`${traceWorkoutId(trace)}::${trace.exerciseId}`)
         )
         .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
-      const traces = selectRepOverlayTraces(sourceTraces);
+      return selectRepOverlayTraces(sourceTraces);
+    }
 
+    function renderRepOverlay(activeRows, selectedTraces = null) {
+      const canvas = document.getElementById("repOverlay");
+      const traces = selectedTraces || selectedOverlayTraces(activeRows);
       document.getElementById("repOverlayNote").textContent =
         state.repOverlayMode === "all"
-          ? "Load over time for all working reps. Colours identify the workout date."
-          : `${overlayModeLabel()} shows the top echo rep and top non-echo rep for each selected workout date. Echo traces are dashed.`;
+          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.`
+          : `${overlayModeLabel()} shows the ${maxRepTypeDescription()} for each selected workout date. Echo traces are dashed.`;
       if (!traces.length) {
         drawEmpty(canvas, "No working rep traces were detected for this selection.");
         document.getElementById("overlayLegend").innerHTML = "";
@@ -2659,7 +2785,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         ctx.lineWidth = state.repOverlayMode === "all"
           ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
-        ctx.setLineDash(state.repOverlayMode !== "all" && isEchoMode(trace.mode) ? [6, 4] : []);
+        ctx.setLineDash(isEchoMode(trace.mode) ? [6, 4] : []);
         ctx.beginPath();
         trace.timeSec.forEach((time, idx) => {
           const x = xScale(time);
@@ -2692,6 +2818,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
             }
             saveDashboardCache();
             renderRepOverlay(activeRows);
+            renderPositionOverlay(activeRows);
+            renderLoadPositionPhaseCharts(activeRows);
             return;
           }
           const date = button.dataset.date;
@@ -2700,8 +2828,211 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
           else state.dimmedOverlayDates.add(key);
           saveDashboardCache();
           renderRepOverlay(activeRows);
+          renderPositionOverlay(activeRows);
+          renderLoadPositionPhaseCharts(activeRows);
         });
       });
+    }
+
+    function tracePositionValues(trace, field) {
+      if (Array.isArray(trace[field]) && trace[field].length) return trace[field];
+      if (Array.isArray(trace.position) && trace.position.length) return trace.position;
+      return [];
+    }
+
+    function positionOverlayLabel() {
+      if (state.positionOverlayBasis === "left") return "Left cable";
+      if (state.positionOverlayBasis === "right") return "Right cable";
+      return "Average";
+    }
+
+    function positionOverlayField() {
+      if (state.positionOverlayBasis === "left") return "positionA";
+      if (state.positionOverlayBasis === "right") return "positionB";
+      return "position";
+    }
+
+    function drawTracePath(ctx, trace, values, xScale, yScale, strokeStyle, lineWidth) {
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lineWidth;
+      ctx.setLineDash(isEchoMode(trace.mode) ? [6, 4] : []);
+      ctx.beginPath();
+      let hasStarted = false;
+      values.forEach((value, idx) => {
+        const number = Number(value);
+        if (!Number.isFinite(number)) {
+          hasStarted = false;
+          return;
+        }
+        const x = xScale(trace.timeSec[idx] || 0);
+        const y = yScale(number);
+        if (!hasStarted) {
+          ctx.moveTo(x, y);
+          hasStarted = true;
+        }
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function renderPositionOverlay(activeRows, selectedTraces = null) {
+      const canvas = document.getElementById("positionOverlay");
+      const traces = selectedTraces || selectedOverlayTraces(activeRows);
+      const positionField = positionOverlayField();
+      const positionLabel = positionOverlayLabel();
+      document.getElementById("positionOverlayNote").textContent =
+        state.repOverlayMode === "all"
+          ? `${positionLabel} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.`
+          : `${overlayModeLabel()} uses the same ${maxRepTypeDescription()} as the load overlay; ${positionLabel.toLowerCase()} position is shown. Echo traces are dashed.`;
+      if (!traces.length) {
+        drawEmpty(canvas, "No working rep positions were detected for this selection.");
+        return;
+      }
+
+      const dates = [...new Set(traces.map(trace => trace.date))];
+      const { ctx, width, height } = canvasSetup(canvas);
+      const box = { left: 62, right: width - 22, top: 34, bottom: height - 46 };
+      const maxTime = Math.max(...traces.flatMap(trace => trace.timeSec), 1);
+      const yValues = traces
+        .flatMap(trace => tracePositionValues(trace, positionField))
+        .map(value => Number(value))
+        .filter(value => Number.isFinite(value));
+      if (!yValues.length) {
+        drawEmpty(canvas, "No working rep positions were detected for this selection.");
+        return;
+      }
+      const yMinRaw = Math.min(...yValues);
+      const yMaxRaw = Math.max(...yValues);
+      const yPad = Math.max((yMaxRaw - yMinRaw || 1) * 0.12, 1);
+      const yMin = yMinRaw - yPad;
+      const yMax = yMaxRaw + yPad;
+      const xScale = scaleLinear(0, maxTime, box.left, box.right);
+      const yScale = scaleLinear(yMin, yMax, box.bottom, box.top);
+      const yTicks = [0, 0.25, 0.5, 0.75, 1].map(part => {
+        const value = yMin + (yMax - yMin) * part;
+        return { y: yScale(value), label: fmtNumber(value, 0) };
+      });
+      drawAxes(ctx, box, yTicks, "cable position");
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#667085";
+      ctx.font = "12px Segoe UI, Arial";
+      ctx.fillText("seconds from rep start", (box.left + box.right) / 2, height - 22);
+
+      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      traces.forEach(trace => {
+        const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
+        const strokeStyle = `${color}${isOverlayDateDimmed(trace.date) ? "88" : "dd"}`;
+        const lineWidth = state.repOverlayMode === "all"
+          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
+          : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
+        drawTracePath(ctx, trace, tracePositionValues(trace, positionField), xScale, yScale, strokeStyle, lineWidth);
+      });
+      ctx.setLineDash([]);
+
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.font = "12px Segoe UI, Arial";
+      ctx.strokeStyle = "#2563ebdd";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(box.left, 16);
+      ctx.lineTo(box.left + 22, 16);
+      ctx.stroke();
+      ctx.fillStyle = "#667085";
+      ctx.fillText(positionLabel, box.left + 28, 16);
+    }
+
+    function phaseSegmentsForTrace(trace, phase) {
+      const positions = tracePositionValues(trace, positionOverlayField());
+      const loads = Array.isArray(trace[traceLoadField()]) ? trace[traceLoadField()] : [];
+      const count = Math.min(positions.length, loads.length);
+      const segments = [];
+      for (let idx = 1; idx < count; idx += 1) {
+        const p0 = Number(positions[idx - 1]);
+        const p1 = Number(positions[idx]);
+        const l0 = displayLoadValue(loads[idx - 1]);
+        const l1 = displayLoadValue(loads[idx]);
+        if (![p0, p1, l0, l1].every(value => Number.isFinite(value))) continue;
+        const delta = p1 - p0;
+        const isConcentric = delta > 0.05;
+        const isEccentric = delta < -0.05;
+        if ((phase === "concentric" && isConcentric) || (phase === "eccentric" && isEccentric)) {
+          segments.push({ trace, p0, p1, l0, l1 });
+        }
+      }
+      return segments;
+    }
+
+    function drawLoadPositionPhaseChart(canvas, traces, phase) {
+      const segments = traces.flatMap(trace => phaseSegmentsForTrace(trace, phase));
+      if (!segments.length) {
+        drawEmpty(
+          canvas,
+          phase === "eccentric"
+            ? "No eccentric segments found. Stop-at-top reps may omit lowering data."
+            : "No concentric segments found for this selection."
+        );
+        return;
+      }
+
+      const { ctx, width, height } = canvasSetup(canvas);
+      const box = { left: 62, right: width - 20, top: 18, bottom: height - 46 };
+      const xValues = segments.flatMap(segment => [segment.p0, segment.p1]);
+      const yValues = segments.flatMap(segment => [segment.l0, segment.l1]);
+      const xMinRaw = Math.min(...xValues);
+      const xMaxRaw = Math.max(...xValues);
+      const xPad = Math.max((xMaxRaw - xMinRaw || 1) * 0.08, 1);
+      const xMin = xMinRaw - xPad;
+      const xMax = xMaxRaw + xPad;
+      const yMin = Math.max(0, Math.min(...yValues) - 2);
+      const yMax = Math.max(...yValues, 1) + 2;
+      const xScale = phase === "eccentric"
+        ? scaleLinear(xMin, xMax, box.right, box.left)
+        : scaleLinear(xMin, xMax, box.left, box.right);
+      const yScale = scaleLinear(yMin, yMax, box.bottom, box.top);
+      const yTicks = [0, 0.25, 0.5, 0.75, 1].map(part => {
+        const value = yMin + (yMax - yMin) * part;
+        return { y: yScale(value), label: fmtNumber(value, 1) };
+      });
+      drawAxes(ctx, box, yTicks, loadUnitLabel());
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#667085";
+      ctx.font = "11px Segoe UI, Arial";
+      for (let idx = 0; idx <= 4; idx += 1) {
+        const value = xMin + ((xMax - xMin) * idx / 4);
+        const x = xScale(value);
+        ctx.fillText(fmtNumber(value, 0), x, box.bottom + 12);
+      }
+      ctx.fillText(`${positionOverlayLabel()} position`, (box.left + box.right) / 2, height - 18);
+
+      const dates = [...new Set(traces.map(trace => trace.date))];
+      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      segments.forEach(segment => {
+        const trace = segment.trace;
+        const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
+        ctx.strokeStyle = `${color}${isOverlayDateDimmed(trace.date) ? "88" : "cc"}`;
+        ctx.lineWidth = state.repOverlayMode === "all"
+          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
+          : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.2);
+        ctx.setLineDash(isEchoMode(trace.mode) ? [6, 4] : []);
+        ctx.beginPath();
+        ctx.moveTo(xScale(segment.p0), yScale(segment.l0));
+        ctx.lineTo(xScale(segment.p1), yScale(segment.l1));
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+    }
+
+    function renderLoadPositionPhaseCharts(activeRows, selectedTraces = null) {
+      const traces = selectedTraces || selectedOverlayTraces(activeRows);
+      document.getElementById("loadPositionNote").textContent =
+        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
+      drawLoadPositionPhaseChart(document.getElementById("concentricLoadPositionChart"), traces, "concentric");
+      drawLoadPositionPhaseChart(document.getElementById("eccentricLoadPositionChart"), traces, "eccentric");
     }
 
     function renderHistoryTable(rows) {
@@ -2812,7 +3143,10 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         }]
       });
       renderMuscleBalance(rows);
-      renderRepOverlay(rows);
+      const overlayTraces = selectedOverlayTraces(rows);
+      renderRepOverlay(rows, overlayTraces);
+      renderPositionOverlay(rows, overlayTraces);
+      renderLoadPositionPhaseCharts(rows, overlayTraces);
       renderHistoryTable(rows);
     }
 
@@ -2886,14 +3220,14 @@ def main() -> None:
             {
                 key: value
                 for key, value in trace.items()
-                if key not in {"timeSec", "perCableLoadKg", "totalLoadKg", "position", "velocity"}
+                if key not in {"timeSec", "perCableLoadKg", "totalLoadKg", "positionA", "positionB", "position", "velocity"}
             }
             for trace in dashboard["repTraces"]
         ],
         [
             key
             for key in dashboard["repTraces"][0].keys()
-            if key not in {"timeSec", "perCableLoadKg", "totalLoadKg", "position", "velocity"}
+            if key not in {"timeSec", "perCableLoadKg", "totalLoadKg", "positionA", "positionB", "position", "velocity"}
         ],
     )
 
