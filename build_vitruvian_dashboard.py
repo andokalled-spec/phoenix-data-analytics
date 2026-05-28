@@ -992,18 +992,43 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       top: var(--rep-filter-sticky-top);
       z-index: 35;
       align-self: start;
+      width: 100%;
     }
 
     .summary-filter-panel {
       margin-bottom: 16px;
     }
 
+    .filter-panel:not(.is-collapsed) {
+      padding: 12px 14px 14px;
+    }
+
+    .filter-panel:not(.is-collapsed) .panel-head {
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eef1f5;
+    }
+
     .filter-panel.is-collapsed .filter-body {
       display: none;
     }
 
+    .filter-panel.is-collapsed {
+      width: fit-content;
+      min-width: 0;
+      padding: 0;
+      margin-left: auto;
+      justify-self: end;
+    }
+
     .filter-panel.is-collapsed .panel-head {
+      display: block;
       margin-bottom: 0;
+    }
+
+    .filter-panel.is-collapsed .panel-head > div {
+      display: none;
     }
 
     .filter-toggle {
@@ -1021,6 +1046,19 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       cursor: pointer;
     }
 
+    .filter-panel.is-collapsed .filter-toggle {
+      width: auto;
+      min-width: 104px;
+      height: 36px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
     .filter-toggle:hover {
       border-color: #9aa4b2;
       background: #f8fafc;
@@ -1028,19 +1066,30 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
     .filter-body {
       display: grid;
-      gap: 10px;
+      gap: 12px;
     }
 
     .filter-controls {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 12px;
-      align-items: center;
+      align-items: end;
+    }
+
+    .summary-filter-panel .filter-controls {
+      grid-template-columns: minmax(240px, 1.4fr) minmax(180px, 0.8fr);
+      max-width: 760px;
     }
 
     .filter-body .legend {
-      margin-top: 0;
-      max-height: 112px;
+      margin-top: 2px;
+      padding-top: 10px;
+      border-top: 1px solid #eef1f5;
+      max-height: 104px;
+    }
+
+    .filter-body .legend:empty {
+      display: none;
     }
 
     .check-control {
@@ -1067,8 +1116,19 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       white-space: nowrap;
     }
 
+    .filter-controls .mini-control {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+      white-space: normal;
+    }
+
     .mini-control label {
       color: var(--muted);
+    }
+
+    .filter-controls .mini-control label {
+      line-height: 1;
     }
 
     .mini-control select {
@@ -1078,6 +1138,12 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       color: var(--ink);
       border-color: var(--line);
       padding: 6px 28px 6px 8px;
+    }
+
+    .filter-controls .mini-control select {
+      width: 100%;
+      min-width: 0;
+      min-height: 36px;
     }
 
     canvas {
@@ -1229,6 +1295,20 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       border-left: 2px solid #b8c0cc;
     }
 
+    .history-group-row th {
+      padding-top: 7px;
+      padding-bottom: 6px;
+      text-align: center;
+      background: #f8fafc;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .history-group-row .group-spacer {
+      background: #fff;
+      border-bottom-color: transparent;
+    }
+
     .table-wrap {
       overflow: auto;
       max-height: 380px;
@@ -1300,6 +1380,9 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       h1 { font-size: 22px; }
       .kpis { grid-template-columns: 1fr; }
       .panel-head { display: grid; }
+      .filter-panel:not(.is-collapsed) .panel-head { display: flex; }
+      .filter-controls,
+      .summary-filter-panel .filter-controls { grid-template-columns: 1fr; }
       canvas, #repOverlay, #positionOverlay { height: 300px; }
       .control { width: 100%; }
       .switch-row { white-space: normal; }
@@ -1442,6 +1525,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         <div class="table-wrap">
           <table>
             <thead>
+              <tr class="history-group-row" id="historyGroupHeader"></tr>
               <tr id="historyHeader"></tr>
             </thead>
             <tbody id="historyRows"></tbody>
@@ -1546,6 +1630,16 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         </div>
       </article>
 
+      <article class="panel wide">
+        <div class="panel-head">
+          <div>
+            <h2>Energy Per Rep</h2>
+            <p class="panel-note" id="repEnergyNote">Total energy for each selected working rep over workout time.</p>
+          </div>
+        </div>
+        <canvas id="repEnergyChart"></canvas>
+      </article>
+
       </section>
     </section>
   </main>
@@ -1621,8 +1715,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       positionOverlayBasis: ["left", "right", "average"].includes(cachedSettings.positionOverlayBasis) ? cachedSettings.positionOverlayBasis : "average",
       ribbonCollapsed: Boolean(cachedSettings.ribbonCollapsed),
       activeTab: ["summary", "repAnalytics"].includes(cachedSettings.activeTab) ? cachedSettings.activeTab : "summary",
-      summaryFiltersCollapsed: Boolean(cachedSettings.summaryFiltersCollapsed),
-      repAnalyticsFiltersCollapsed: Boolean(cachedSettings.repAnalyticsFiltersCollapsed),
+      filtersCollapsed: Boolean(cachedSettings.filtersCollapsed ?? cachedSettings.summaryFiltersCollapsed ?? cachedSettings.repAnalyticsFiltersCollapsed),
       dimmedOverlayDates: new Set(Array.isArray(cachedSettings.dimmedOverlayDates) ? cachedSettings.dimmedOverlayDates : [])
     };
 
@@ -1639,8 +1732,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         positionOverlayBasis: state.positionOverlayBasis,
         ribbonCollapsed: state.ribbonCollapsed,
         activeTab: state.activeTab,
-        summaryFiltersCollapsed: state.summaryFiltersCollapsed,
-        repAnalyticsFiltersCollapsed: state.repAnalyticsFiltersCollapsed,
+        filtersCollapsed: state.filtersCollapsed,
         dimmedOverlayDates: [...state.dimmedOverlayDates]
       };
     }
@@ -2348,8 +2440,9 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     function setupChartTooltips() {
-      ["repsChart", "loadChart", "volumeChart", "velocityChart", "muscleBalanceChart"].forEach(id => {
+      ["repsChart", "loadChart", "volumeChart", "velocityChart", "muscleBalanceChart", "repEnergyChart"].forEach(id => {
         const canvas = document.getElementById(id);
+        if (!canvas) return;
         canvas.addEventListener("mousemove", event => {
           const rect = canvas.getBoundingClientRect();
           const item = nearestChartItem(canvas, event.clientX - rect.left, event.clientY - rect.top);
@@ -2489,18 +2582,23 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       repAnalyticsTabButton.setAttribute("aria-pressed", String(showRepAnalytics));
     }
 
-    function applySummaryFilterState() {
-      summaryFilterPanel.classList.toggle("is-collapsed", state.summaryFiltersCollapsed);
-      summaryFilterToggle.setAttribute("aria-expanded", String(!state.summaryFiltersCollapsed));
-      summaryFilterToggle.textContent = state.summaryFiltersCollapsed ? "+" : "-";
-      summaryFilterToggle.title = state.summaryFiltersCollapsed ? "Expand filters" : "Collapse filters";
+    function applyFilterCollapseState() {
+      const expanded = !state.filtersCollapsed;
+      [
+        [summaryFilterPanel, summaryFilterToggle],
+        [repAnalyticsFilterPanel, repAnalyticsFilterToggle]
+      ].forEach(([panel, toggle]) => {
+        panel.classList.toggle("is-collapsed", state.filtersCollapsed);
+        toggle.setAttribute("aria-expanded", String(expanded));
+        toggle.textContent = expanded ? "-" : "Filters +";
+        toggle.title = expanded ? "Collapse filters" : "Expand filters";
+      });
     }
 
-    function applyRepAnalyticsFilterState() {
-      repAnalyticsFilterPanel.classList.toggle("is-collapsed", state.repAnalyticsFiltersCollapsed);
-      repAnalyticsFilterToggle.setAttribute("aria-expanded", String(!state.repAnalyticsFiltersCollapsed));
-      repAnalyticsFilterToggle.textContent = state.repAnalyticsFiltersCollapsed ? "+" : "-";
-      repAnalyticsFilterToggle.title = state.repAnalyticsFiltersCollapsed ? "Expand filters" : "Collapse filters";
+    function toggleFiltersCollapsed() {
+      state.filtersCollapsed = !state.filtersCollapsed;
+      applyFilterCollapseState();
+      saveDashboardCache();
     }
 
     function setupControls() {
@@ -2515,8 +2613,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       positionOverlayBasis.value = state.positionOverlayBasis;
       applyRibbonState();
       applyDashboardTabState();
-      applySummaryFilterState();
-      applyRepAnalyticsFilterState();
+      applyFilterCollapseState();
       if (cachedDashboard?.data) {
         document.querySelector("label[for='backupFileInput'].file-button").textContent = "Cached data";
       }
@@ -2527,14 +2624,10 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         saveDashboardCache();
       });
       summaryFilterToggle.addEventListener("click", () => {
-        state.summaryFiltersCollapsed = !state.summaryFiltersCollapsed;
-        applySummaryFilterState();
-        saveDashboardCache();
+        toggleFiltersCollapsed();
       });
       repAnalyticsFilterToggle.addEventListener("click", () => {
-        state.repAnalyticsFiltersCollapsed = !state.repAnalyticsFiltersCollapsed;
-        applyRepAnalyticsFilterState();
-        saveDashboardCache();
+        toggleFiltersCollapsed();
       });
       mainContent.addEventListener("pointerdown", autoCollapseRibbon);
       window.addEventListener("scroll", autoCollapseRibbon, { passive: true });
@@ -3183,85 +3276,10 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       return Number.isFinite(value) ? value : -Infinity;
     }
 
-    function traceUniqueKey(trace) {
-      return [
-        traceWorkoutId(trace),
-        trace.exerciseId,
-        trace.dateTime,
-        trace.mode || "",
-        trace.setNumber ?? "",
-        trace.repIndex ?? ""
-      ].join("::");
-    }
-
-    function allOverlayHighlightSpecs() {
-      return [
-        {
-          role: "maxAverage",
-          field: state.loadBasis === "total" ? "avgTotalLoadKg" : "avgPerCableLoadKg"
-        },
-        {
-          role: "maxMedian",
-          field: state.loadBasis === "total" ? "medianTotalLoadKg" : "medianPerCableLoadKg"
-        },
-        {
-          role: "maxEnergy",
-          field: "totalEnergyJ"
-        }
-      ];
-    }
-
-    function annotateAllOverlayHighlights(traces) {
-      const annotated = traces.map(trace => ({ ...trace, highlightRoles: [] }));
-      const annotatedByKey = new Map(annotated.map(trace => [traceUniqueKey(trace), trace]));
-      allOverlayHighlightSpecs().forEach(spec => {
-        const bestByDateAndMode = new Map();
-        traces.forEach(trace => {
-          const key = `${trace.date}::${traceModeKey(trace)}`;
-          const current = bestByDateAndMode.get(key);
-          if (!current || traceMetricValue(trace, spec.field) > traceMetricValue(current, spec.field)) {
-            bestByDateAndMode.set(key, trace);
-          }
-        });
-        bestByDateAndMode.forEach(trace => {
-          const annotatedTrace = annotatedByKey.get(traceUniqueKey(trace));
-          if (annotatedTrace && !annotatedTrace.highlightRoles.includes(spec.role)) {
-            annotatedTrace.highlightRoles.push(spec.role);
-          }
-        });
-      });
-      return annotated;
-    }
-
-    function traceHighlightRoles(trace) {
-      return Array.isArray(trace.highlightRoles) ? trace.highlightRoles : [];
-    }
-
-    function traceHasAllOverlayHighlight(trace) {
-      return state.repOverlayMode === "all" &&
-        traceHighlightRoles(trace).length > 0 &&
-        !isOverlayDateDimmed(trace.date);
-    }
-
-    function highlightedTraceLineWidth(trace) {
-      const roles = traceHighlightRoles(trace);
-      let width = 2.4;
-      if (roles.includes("maxMedian")) width = Math.max(width, 2.9);
-      if (roles.includes("maxEnergy")) width = Math.max(width, 3.4);
-      return width + Math.max(0, roles.length - 1) * 0.25;
-    }
-
-    function allOverlayHighlightNote() {
-      return state.repOverlayMode === "all"
-        ? " Max average, max median and max energy reps are highlighted with heavier curves."
-        : "";
-    }
-
     function selectRepOverlayTraces(traces) {
       const field = overlayRankField();
       if (!field) {
-        return annotateAllOverlayHighlights(traces)
-          .map(trace => ({ ...trace, overlayModeLabel: "All" }));
+        return traces.map(trace => ({ ...trace, overlayModeLabel: "All" }));
       }
       const bestByDateAndMode = new Map();
       traces.forEach(trace => {
@@ -3286,6 +3304,85 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         )
         .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
       return selectRepOverlayTraces(sourceTraces);
+    }
+
+    function traceTimeLabel(trace) {
+      const text = String(trace.dateTime || trace.label || trace.date || "");
+      const match = text.match(/\b(\d{1,2}:\d{2})(?::\d{2})?\b/);
+      if (match) return match[1];
+      return trace.label || trace.date || "-";
+    }
+
+    function renderRepEnergyChart(activeRows, selectedTraces = null) {
+      const canvas = document.getElementById("repEnergyChart");
+      const traces = (selectedTraces || selectedOverlayTraces(activeRows))
+        .map(trace => ({ ...trace, energyJ: Number(trace.totalEnergyJ) }))
+        .filter(trace => Number.isFinite(trace.energyJ))
+        .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime) || Number(a.repIndex || 0) - Number(b.repIndex || 0));
+      document.getElementById("repEnergyNote").textContent =
+        `${overlayModeLabel()} energy per selected ${repTypeFilterLabel().toLowerCase()} over workout time. Bars use workout date colours.`;
+      if (!traces.length) {
+        drawEmpty(canvas, "No rep energy values were detected for this selection.");
+        return;
+      }
+
+      const dates = [...new Set(traces.map(trace => trace.date))];
+      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const { ctx, width, height } = canvasSetup(canvas);
+      const box = { left: 62, right: width - 22, top: 18, bottom: height - 52 };
+      const energyValues = traces.map(trace => trace.energyJ / 1000);
+      const yMax = Math.max(...energyValues, 1);
+      const yScale = scaleLinear(0, yMax * 1.16, box.bottom, box.top);
+      const xScale = traces.length === 1
+        ? () => (box.left + box.right) / 2
+        : scaleLinear(0, traces.length - 1, box.left, box.right);
+      const slotWidth = (box.right - box.left) / Math.max(traces.length, 1);
+      const barWidth = Math.max(2, Math.min(16, slotWidth * 0.72));
+      const yTicks = [0, 0.25, 0.5, 0.75, 1].map(part => {
+        const value = yMax * 1.16 * part;
+        return { y: yScale(value), label: fmtNumber(value, 1) };
+      });
+      drawAxes(ctx, box, yTicks, "energy (kJ)");
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#667085";
+      ctx.font = "11px Segoe UI, Arial";
+      const labelStep = Math.max(1, Math.ceil(traces.length / 7));
+      traces.forEach((trace, idx) => {
+        if (idx % labelStep === 0 || idx === traces.length - 1) {
+          const label = `${String(trace.date || "").slice(5)} ${traceTimeLabel(trace)}`.trim();
+          ctx.fillText(label, xScale(idx), box.bottom + 12);
+        }
+      });
+      ctx.fillText("workout time", (box.left + box.right) / 2, height - 18);
+
+      const hitItems = [];
+      traces.forEach((trace, idx) => {
+        const x = xScale(idx);
+        const energyKj = trace.energyJ / 1000;
+        const y = yScale(energyKj);
+        const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
+        ctx.fillStyle = `${color}${isOverlayDateDimmed(trace.date) ? "90" : "d8"}`;
+        ctx.fillRect(x - barWidth / 2, y, barWidth, box.bottom - y);
+        hitItems.push({
+          x,
+          y,
+          bounds: {
+            left: x - barWidth / 2,
+            right: x + barWidth / 2,
+            top: y,
+            bottom: box.bottom
+          },
+          lines: [
+            `${trace.label || trace.date || "-"} ${traceTimeLabel(trace)}`,
+            trace.exerciseName || "Working rep",
+            `${traceModeKey(trace)} rep ${trace.repIndex || "-"}`,
+            `Energy: ${fmtEnergy(trace.energyJ, 1)}`
+          ]
+        });
+      });
+      setChartHitAreas(canvas, hitItems);
     }
 
     function drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, strokeStyle, lineWidth) {
@@ -3314,18 +3411,12 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       ctx.stroke();
     }
 
-    function drawHighlightedLoadTrace(ctx, trace, loadKey, xScale, yScale, color) {
-      const lineWidth = highlightedTraceLineWidth(trace);
-      drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, "rgba(255, 255, 255, 0.92)", lineWidth + 3.2);
-      drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, `${color}f2`, lineWidth);
-    }
-
     function renderRepOverlay(activeRows, selectedTraces = null) {
       const canvas = document.getElementById("repOverlay");
       const traces = selectedTraces || selectedOverlayTraces(activeRows);
       document.getElementById("repOverlayNote").textContent =
         state.repOverlayMode === "all"
-          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.${allOverlayHighlightNote()}`
+          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.`
           : `${overlayModeLabel()} shows the ${maxRepTypeDescription()} for each selected workout date. Echo traces are dashed.`;
       if (!traces.length) {
         drawEmpty(canvas, "No working rep traces were detected for this selection.");
@@ -3360,24 +3451,12 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         const strokeAlpha = isOverlayDateDimmed(trace.date)
           ? "82"
-          : (state.repOverlayMode === "all" ? "38" : "aa");
+          : "aa";
         const lineWidth = state.repOverlayMode === "all"
-          ? (isOverlayDateDimmed(trace.date) ? 1.0 : 1.1)
+          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
         drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
       });
-      if (state.repOverlayMode === "all") {
-        traces.filter(traceHasAllOverlayHighlight).forEach(trace => {
-          drawHighlightedLoadTrace(
-            ctx,
-            trace,
-            loadKey,
-            xScale,
-            yScale,
-            dateColors.get(trace.date) || "#2563eb"
-          );
-        });
-      }
       ctx.setLineDash([]);
 
       const allDatesDimmed = dates.every(date => isOverlayDateDimmed(date));
@@ -3400,6 +3479,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
               dates.forEach(date => state.dimmedOverlayDates.add(overlayDateKey(date)));
             }
             saveDashboardCache();
+            renderRepEnergyChart(activeRows);
             renderRepOverlay(activeRows);
             renderPositionOverlay(activeRows);
             renderLoadPositionPhaseCharts(activeRows);
@@ -3410,6 +3490,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
           if (state.dimmedOverlayDates.has(key)) state.dimmedOverlayDates.delete(key);
           else state.dimmedOverlayDates.add(key);
           saveDashboardCache();
+          renderRepEnergyChart(activeRows);
           renderRepOverlay(activeRows);
           renderPositionOverlay(activeRows);
           renderLoadPositionPhaseCharts(activeRows);
@@ -3460,12 +3541,6 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       ctx.stroke();
     }
 
-    function drawHighlightedPositionTrace(ctx, trace, values, xScale, yScale, color) {
-      const lineWidth = highlightedTraceLineWidth(trace);
-      drawTracePath(ctx, trace, values, xScale, yScale, "rgba(255, 255, 255, 0.92)", lineWidth + 3.2);
-      drawTracePath(ctx, trace, values, xScale, yScale, `${color}f2`, lineWidth);
-    }
-
     function renderPositionOverlay(activeRows, selectedTraces = null) {
       const canvas = document.getElementById("positionOverlay");
       const traces = selectedTraces || selectedOverlayTraces(activeRows);
@@ -3473,7 +3548,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       const positionLabel = positionOverlayLabel();
       document.getElementById("positionOverlayNote").textContent =
         state.repOverlayMode === "all"
-          ? `${positionLabel} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.${allOverlayHighlightNote()}`
+          ? `${positionLabel} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.`
           : `${overlayModeLabel()} uses the same ${maxRepTypeDescription()} as the load overlay; ${positionLabel.toLowerCase()} position is shown. Echo traces are dashed.`;
       if (!traces.length) {
         drawEmpty(canvas, "No working rep positions were detected for this selection.");
@@ -3516,25 +3591,13 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         const strokeAlpha = isOverlayDateDimmed(trace.date)
           ? "82"
-          : (state.repOverlayMode === "all" ? "38" : "dd");
+          : "dd";
         const strokeStyle = `${color}${strokeAlpha}`;
         const lineWidth = state.repOverlayMode === "all"
-          ? (isOverlayDateDimmed(trace.date) ? 1.0 : 1.1)
+          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
         drawTracePath(ctx, trace, tracePositionValues(trace, positionField), xScale, yScale, strokeStyle, lineWidth);
       });
-      if (state.repOverlayMode === "all") {
-        traces.filter(traceHasAllOverlayHighlight).forEach(trace => {
-          drawHighlightedPositionTrace(
-            ctx,
-            trace,
-            tracePositionValues(trace, positionField),
-            xScale,
-            yScale,
-            dateColors.get(trace.date) || "#2563eb"
-          );
-        });
-      }
       ctx.setLineDash([]);
 
       ctx.textAlign = "left";
@@ -3582,12 +3645,6 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       ctx.moveTo(xScale(segment.p0), yScale(segment.l0));
       ctx.lineTo(xScale(segment.p1), yScale(segment.l1));
       ctx.stroke();
-    }
-
-    function drawHighlightedPhaseSegment(ctx, segment, xScale, yScale, color) {
-      const lineWidth = highlightedTraceLineWidth(segment.trace);
-      drawPhaseSegment(ctx, segment, xScale, yScale, "rgba(255, 255, 255, 0.92)", lineWidth + 3.2);
-      drawPhaseSegment(ctx, segment, xScale, yScale, `${color}f2`, lineWidth);
     }
 
     function drawLoadPositionPhaseChart(canvas, traces, phase) {
@@ -3641,30 +3698,19 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         const strokeAlpha = isOverlayDateDimmed(trace.date)
           ? "82"
-          : (state.repOverlayMode === "all" ? "38" : "cc");
+          : "cc";
         const lineWidth = state.repOverlayMode === "all"
-          ? (isOverlayDateDimmed(trace.date) ? 1.0 : 1.1)
+          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.2);
         drawPhaseSegment(ctx, segment, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
       });
-      if (state.repOverlayMode === "all") {
-        segments.filter(segment => traceHasAllOverlayHighlight(segment.trace)).forEach(segment => {
-          drawHighlightedPhaseSegment(
-            ctx,
-            segment,
-            xScale,
-            yScale,
-            dateColors.get(segment.trace.date) || "#2563eb"
-          );
-        });
-      }
       ctx.setLineDash([]);
     }
 
     function renderLoadPositionPhaseCharts(activeRows, selectedTraces = null) {
       const traces = selectedTraces || selectedOverlayTraces(activeRows);
       document.getElementById("loadPositionNote").textContent =
-        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.${allOverlayHighlightNote()}`;
+        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
       drawLoadPositionPhaseChart(document.getElementById("concentricLoadPositionChart"), traces, "concentric");
       drawLoadPositionPhaseChart(document.getElementById("eccentricLoadPositionChart"), traces, "eccentric");
     }
@@ -3684,6 +3730,13 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     function renderHistoryTable(rows) {
+      const baseColumnCount = isAllExercises() ? 7 : 6;
+      document.getElementById("historyGroupHeader").innerHTML = `
+        <th class="group-spacer" colspan="${baseColumnCount}"></th>
+        <th class="group-separator" colspan="2">Non-Echo</th>
+        <th class="group-spacer" colspan="3"></th>
+        <th class="group-separator" colspan="5">Echo</th>
+      `;
       document.getElementById("historyHeader").innerHTML = `
         <th>Date</th>
         ${isAllExercises() ? "<th>Exercise</th>" : ""}
@@ -3691,16 +3744,16 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         <th>Sets</th>
         <th>Reps</th>
         <th>Max Load</th>
-        <th class="group-separator">Non-Echo Reps</th>
-        <th>Non-Echo Energy</th>
+        <th class="group-separator">Reps</th>
+        <th>Energy</th>
         <th>Volume</th>
         <th>Est. 1RM</th>
         <th>Avg MCV</th>
-        <th class="group-separator">Echo Reps</th>
-        <th>Echo Median</th>
-        <th>Echo Avg</th>
-        <th>Echo Peak</th>
-        <th>Echo Energy</th>
+        <th class="group-separator">Reps</th>
+        <th>Median</th>
+        <th>Avg</th>
+        <th>Peak</th>
+        <th>Energy</th>
       `;
       const newest = [...rows].sort((a, b) => b.timestamp - a.timestamp);
       document.getElementById("historyRows").innerHTML = newest.map(row => `
@@ -3796,6 +3849,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       });
       renderMuscleBalance(rows);
       const overlayTraces = selectedOverlayTraces(rows);
+      renderRepEnergyChart(rows, overlayTraces);
       renderRepOverlay(rows, overlayTraces);
       renderPositionOverlay(rows, overlayTraces);
       renderLoadPositionPhaseCharts(rows, overlayTraces);
