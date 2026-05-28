@@ -15,6 +15,7 @@ from typing import Any
 
 
 PERTH = timezone(timedelta(hours=8), "Australia/Perth")
+GRAVITY_M_S2 = 9.80665
 
 
 def as_float(value: Any, default: float = 0.0) -> float:
@@ -89,6 +90,47 @@ def median(values: list[float]) -> float | None:
 
 def is_echo_mode(value: Any) -> bool:
     return "echo" in str(value or "").strip().lower()
+
+
+def add_cable_segment_energy(
+    totals: dict[str, float],
+    previous: dict[str, Any],
+    current: dict[str, Any],
+    load_key: str,
+    position_key: str,
+    fallback_position_key: str | None = None,
+) -> None:
+    previous_position = as_float(
+        previous.get(position_key),
+        as_float(previous.get(fallback_position_key)) if fallback_position_key else 0.0,
+    )
+    current_position = as_float(
+        current.get(position_key),
+        as_float(current.get(fallback_position_key)) if fallback_position_key else previous_position,
+    )
+    delta_cm = current_position - previous_position
+    if abs(delta_cm) <= 0.05:
+        return
+    previous_load = as_float(previous.get(load_key))
+    current_load = as_float(current.get(load_key), previous_load)
+    average_load_kg = max(0.0, (previous_load + current_load) / 2)
+    energy_j = average_load_kg * GRAVITY_M_S2 * abs(delta_cm) / 100
+    if delta_cm > 0:
+        totals["concentric"] += energy_j
+    else:
+        totals["eccentric"] += energy_j
+
+
+def segment_energy_joules(samples: list[dict[str, Any]], cable_count: int) -> dict[str, float]:
+    totals = {"concentric": 0.0, "eccentric": 0.0}
+    for idx in range(1, len(samples)):
+        previous = samples[idx - 1]
+        current = samples[idx]
+        add_cable_segment_energy(totals, previous, current, "load", "position")
+        if cable_count >= 2:
+            add_cable_segment_energy(totals, previous, current, "loadB", "positionB", "position")
+    totals["total"] = totals["concentric"] + totals["eccentric"]
+    return totals
 
 
 def moving_average(values: list[float], span: int = 5) -> list[float]:
@@ -248,6 +290,7 @@ def segment_working_reps(
         if len(segment) < 6:
             continue
 
+        energy = segment_energy_joules(segment, cable_count)
         full_per_cable_loads: list[float] = []
         full_total_loads: list[float] = []
         for row in segment:
@@ -304,6 +347,9 @@ def segment_working_reps(
                 "avgTotalLoadKg": rounded(mean(full_total_loads), 2),
                 "medianTotalLoadKg": rounded(median(full_total_loads), 2),
                 "peakTotalLoadKg": rounded(max(full_total_loads), 2) if full_total_loads else None,
+                "concentricEnergyJ": rounded(energy["concentric"], 1),
+                "eccentricEnergyJ": rounded(energy["eccentric"], 1),
+                "totalEnergyJ": rounded(energy["total"], 1),
                 "timeSec": times,
                 "perCableLoadKg": per_cable_loads,
                 "totalLoadKg": total_loads,
@@ -533,6 +579,10 @@ def build_tables(raw_data: dict[str, Any]) -> dict[str, Any]:
             max((as_float(trace.get("peakTotalLoadKg")) for trace in echo_traces), default=math.nan),
             2,
         )
+        row["largestEchoRepEnergyJ"] = rounded(
+            max((as_float(trace.get("totalEnergyJ")) for trace in echo_traces), default=math.nan),
+            1,
+        )
         row["largestNonEchoRepMedianWeightPerCableKg"] = rounded(
             max((as_float(trace.get("medianPerCableLoadKg")) for trace in non_echo_traces), default=math.nan),
             2,
@@ -548,6 +598,10 @@ def build_tables(raw_data: dict[str, Any]) -> dict[str, Any]:
         row["largestNonEchoRepAverageTotalLoadKg"] = rounded(
             max((as_float(trace.get("avgTotalLoadKg")) for trace in non_echo_traces), default=math.nan),
             2,
+        )
+        row["largestNonEchoRepEnergyJ"] = rounded(
+            max((as_float(trace.get("totalEnergyJ")) for trace in non_echo_traces), default=math.nan),
+            1,
         )
 
     exercise_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -627,6 +681,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       --green: #059669;
       --violet: #7c3aed;
       --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --rep-filter-sticky-top: 72px;
     }
 
     * { box-sizing: border-box; }
@@ -642,6 +697,21 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       background: #111827;
       color: #fff;
       padding: 22px 24px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
+    }
+
+    .top-ribbon {
+      transition: padding 160ms ease;
+      max-height: 82vh;
+      overflow-y: auto;
+    }
+
+    .top-ribbon.is-collapsed {
+      padding-top: 12px;
+      padding-bottom: 12px;
     }
 
     .header-inner {
@@ -653,11 +723,51 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       align-items: end;
     }
 
+    .header-copy {
+      min-width: 0;
+    }
+
+    .header-title-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .top-ribbon.is-collapsed .header-title-row {
+      margin-bottom: 0;
+    }
+
     h1 {
-      margin: 0 0 8px;
+      margin: 0;
       font-size: 26px;
       line-height: 1.15;
       letter-spacing: 0;
+    }
+
+    .ribbon-toggle {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid rgba(203, 213, 225, 0.45);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .ribbon-toggle:hover {
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .top-ribbon.is-collapsed .subtle,
+    .top-ribbon.is-collapsed .controls {
+      display: none;
     }
 
     .subtle {
@@ -781,12 +891,20 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     main {
       max-width: 1400px;
       margin: 0 auto;
-      padding: 18px 24px 32px;
+      padding: 18px 24px 96px;
+    }
+
+    .dashboard-tab {
+      display: block;
+    }
+
+    .dashboard-tab.is-hidden {
+      display: none;
     }
 
     .kpis {
       display: grid;
-      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
       gap: 12px;
       margin-bottom: 16px;
     }
@@ -867,6 +985,62 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       align-items: center;
       color: var(--muted);
       font-size: 12px;
+    }
+
+    .sticky-filter-panel {
+      position: sticky;
+      top: var(--rep-filter-sticky-top);
+      z-index: 35;
+      align-self: start;
+    }
+
+    .summary-filter-panel {
+      margin-bottom: 16px;
+    }
+
+    .filter-panel.is-collapsed .filter-body {
+      display: none;
+    }
+
+    .filter-panel.is-collapsed .panel-head {
+      margin-bottom: 0;
+    }
+
+    .filter-toggle {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .filter-toggle:hover {
+      border-color: #9aa4b2;
+      background: #f8fafc;
+    }
+
+    .filter-body {
+      display: grid;
+      gap: 10px;
+    }
+
+    .filter-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .filter-body .legend {
+      margin-top: 0;
+      max-height: 112px;
     }
 
     .check-control {
@@ -1070,6 +1244,47 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       border-radius: 6px;
     }
 
+    .bottom-ribbon {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 60;
+      background: #111827;
+      border-top: 1px solid rgba(203, 213, 225, 0.22);
+      box-shadow: 0 -8px 22px rgba(15, 23, 42, 0.18);
+      padding: 10px 16px;
+    }
+
+    .bottom-ribbon-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .tab-button {
+      min-height: 42px;
+      border: 1px solid rgba(203, 213, 225, 0.35);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .tab-button:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .tab-button.is-active {
+      background: #ffffff;
+      color: #111827;
+      border-color: #ffffff;
+    }
+
     @media (max-width: 1000px) {
       .header-inner { grid-template-columns: 1fr; }
       .controls { justify-content: flex-start; }
@@ -1081,7 +1296,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
     @media (max-width: 560px) {
       header { padding: 18px 16px; }
-      main { padding: 14px 12px 28px; }
+      main { padding: 14px 12px 92px; }
       h1 { font-size: 22px; }
       .kpis { grid-template-columns: 1fr; }
       .panel-head { display: grid; }
@@ -1093,28 +1308,20 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
   </style>
 </head>
 <body>
-  <header>
+  <header id="topRibbon" class="top-ribbon">
     <div class="header-inner">
-      <div>
-        <h1>Vitruvian Training Dashboard</h1>
+      <div class="header-copy">
+        <div class="header-title-row">
+          <h1>Vitruvian Training Dashboard</h1>
+          <button class="ribbon-toggle" id="ribbonToggle" type="button" aria-expanded="true" aria-controls="dashboardRibbonControls" title="Collapse top ribbon">-</button>
+        </div>
         <p class="subtle" id="sourceMeta"></p>
       </div>
-      <div class="controls">
+      <div class="controls" id="dashboardRibbonControls">
         <div class="control stacked-control">
           <label for="backupFileInput">Backup File</label>
           <label class="file-button" for="backupFileInput">Load JSON/TXT</label>
           <input class="file-input" id="backupFileInput" type="file" accept=".json,.txt,application/json,text/plain">
-          <label for="exerciseSelect">Exercise</label>
-          <select id="exerciseSelect"></select>
-        </div>
-        <div class="control">
-          <label for="historyWindow">History Window</label>
-          <select id="historyWindow">
-            <option value="5">Last 5 workouts</option>
-            <option value="10" selected>Last 10 workouts</option>
-            <option value="20">Last 20 workouts</option>
-            <option value="all">All workouts</option>
-          </select>
         </div>
         <div class="control stacked-control">
           <label for="loadUnitToggle">Load Units</label>
@@ -1141,9 +1348,35 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
   </header>
 
   <main>
-    <section class="kpis" id="kpis"></section>
+    <section class="dashboard-tab" id="summaryTabPanel">
+      <article class="panel summary-filter-panel filter-panel sticky-filter-panel" id="summaryFilterPanel">
+        <div class="panel-head">
+          <div>
+            <h2>Filters</h2>
+          </div>
+          <button class="filter-toggle" id="summaryFilterToggle" type="button" aria-expanded="true" aria-controls="summaryFilterBody" title="Collapse filters">-</button>
+        </div>
+        <div class="filter-body" id="summaryFilterBody">
+          <div class="filter-controls">
+            <div class="mini-control">
+              <label for="summaryExerciseSelect">Exercise</label>
+              <select id="summaryExerciseSelect"></select>
+            </div>
+            <div class="mini-control">
+              <label for="summaryHistoryWindow">History</label>
+              <select id="summaryHistoryWindow">
+                <option value="5">Last 5 workouts</option>
+                <option value="10" selected>Last 10 workouts</option>
+                <option value="20">Last 20 workouts</option>
+                <option value="all">All workouts</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </article>
+      <section class="kpis" id="kpis"></section>
 
-    <section class="grid">
+      <section class="grid">
       <article class="panel">
         <div class="panel-head">
           <div>
@@ -1202,16 +1435,53 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       <article class="panel wide">
         <div class="panel-head">
           <div>
-            <h2>Working Rep Load Overlay</h2>
-            <p class="panel-note" id="repOverlayNote">Load over time for working reps only. Colours identify the workout date.</p>
+            <h2>Workout History Table</h2>
+            <p class="panel-note">Recent grouped workouts for the selected exercise.</p>
           </div>
-          <div class="chart-options" aria-label="Working rep overlay options">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr id="historyHeader"></tr>
+            </thead>
+            <tbody id="historyRows"></tbody>
+          </table>
+        </div>
+      </article>
+      </section>
+    </section>
+
+    <section class="dashboard-tab is-hidden" id="repAnalyticsTabPanel">
+      <section class="grid">
+      <article class="panel wide filter-panel sticky-filter-panel" id="repAnalyticsFilterPanel">
+        <div class="panel-head">
+          <div>
+            <h2>Filters</h2>
+          </div>
+          <button class="filter-toggle" id="repAnalyticsFilterToggle" type="button" aria-expanded="true" aria-controls="repAnalyticsFilterBody" title="Collapse filters">-</button>
+        </div>
+        <div class="filter-body" id="repAnalyticsFilterBody">
+          <div class="filter-controls">
+            <div class="mini-control">
+              <label for="repExerciseSelect">Exercise</label>
+              <select id="repExerciseSelect"></select>
+            </div>
+            <div class="mini-control">
+              <label for="repHistoryWindow">History</label>
+              <select id="repHistoryWindow">
+                <option value="5">Last 5 workouts</option>
+                <option value="10" selected>Last 10 workouts</option>
+                <option value="20">Last 20 workouts</option>
+                <option value="all">All workouts</option>
+              </select>
+            </div>
             <div class="mini-control">
               <label for="repOverlayMode">Overlay</label>
               <select id="repOverlayMode">
                 <option value="all">All</option>
                 <option value="maxAverage">Max average</option>
                 <option value="maxMedian">Max median</option>
+                <option value="maxEnergy">Max energy</option>
               </select>
             </div>
             <div class="mini-control">
@@ -1223,9 +1493,18 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
               </select>
             </div>
           </div>
+          <div class="legend" id="overlayLegend"></div>
+        </div>
+      </article>
+
+      <article class="panel wide">
+        <div class="panel-head">
+          <div>
+            <h2>Working Rep Load Overlay</h2>
+            <p class="panel-note" id="repOverlayNote">Load over time for working reps only. Colours identify the workout date.</p>
+          </div>
         </div>
         <canvas id="repOverlay"></canvas>
-        <div class="legend" id="overlayLegend"></div>
       </article>
 
       <article class="panel wide">
@@ -1267,24 +1546,15 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         </div>
       </article>
 
-      <article class="panel wide">
-        <div class="panel-head">
-          <div>
-            <h2>Workout History Table</h2>
-            <p class="panel-note">Recent grouped workouts for the selected exercise.</p>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr id="historyHeader"></tr>
-            </thead>
-            <tbody id="historyRows"></tbody>
-          </table>
-        </div>
-      </article>
+      </section>
     </section>
   </main>
+  <nav class="bottom-ribbon" aria-label="Dashboard tabs">
+    <div class="bottom-ribbon-inner">
+      <button class="tab-button is-active" id="summaryTabButton" type="button" data-tab="summary" aria-pressed="true">Summary</button>
+      <button class="tab-button" id="repAnalyticsTabButton" type="button" data-tab="repAnalytics" aria-pressed="false">Rep Analytics</button>
+    </div>
+  </nav>
   <div class="chart-tooltip" id="chartTooltip"></div>
 
   <script>
@@ -1309,6 +1579,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       ]
     };
     const KG_TO_LB = 2.2046226218;
+    const GRAVITY_M_S2 = 9.80665;
     const CACHE_KEY = "vitruvianTrainingDashboardCache:v1";
     const ALL_EXERCISES_ID = "__all_exercises__";
 
@@ -1320,7 +1591,14 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         if (!parsed?.data?.workoutExerciseSummary || !Array.isArray(parsed.data.exercises)) return null;
         const hasPositionChannels = !parsed.data.repTraces?.length ||
           parsed.data.repTraces.some(trace => Array.isArray(trace.positionA) && Array.isArray(trace.positionB));
-        if (!hasPositionChannels) return { settings: parsed.settings || {} };
+        const hasEnergyFields = !parsed.data.repTraces?.length ||
+          parsed.data.repTraces.some(trace => Number.isFinite(Number(trace.totalEnergyJ)));
+        const hasSummaryEnergyFields = !parsed.data.workoutExerciseSummary.length ||
+          parsed.data.workoutExerciseSummary.every(row =>
+            Object.prototype.hasOwnProperty.call(row, "largestEchoRepEnergyJ") &&
+            Object.prototype.hasOwnProperty.call(row, "largestNonEchoRepEnergyJ")
+          );
+        if (!hasPositionChannels || !hasEnergyFields || !hasSummaryEnergyFields) return { settings: parsed.settings || {} };
         return parsed;
       } catch (error) {
         return null;
@@ -1338,9 +1616,13 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       historyWindow: ["5", "10", "20", "all"].includes(cachedSettings.historyWindow) ? cachedSettings.historyWindow : "10",
       showLoadEchoMedian: Boolean(cachedSettings.showLoadEchoMedian),
       showLoadEchoAverage: Boolean(cachedSettings.showLoadEchoAverage),
-      repOverlayMode: ["all", "maxAverage", "maxMedian"].includes(cachedSettings.repOverlayMode) ? cachedSettings.repOverlayMode : "all",
+      repOverlayMode: ["all", "maxAverage", "maxMedian", "maxEnergy"].includes(cachedSettings.repOverlayMode) ? cachedSettings.repOverlayMode : "all",
       repTypeFilter: ["all", "echo", "nonEcho"].includes(cachedSettings.repTypeFilter) ? cachedSettings.repTypeFilter : "all",
       positionOverlayBasis: ["left", "right", "average"].includes(cachedSettings.positionOverlayBasis) ? cachedSettings.positionOverlayBasis : "average",
+      ribbonCollapsed: Boolean(cachedSettings.ribbonCollapsed),
+      activeTab: ["summary", "repAnalytics"].includes(cachedSettings.activeTab) ? cachedSettings.activeTab : "summary",
+      summaryFiltersCollapsed: Boolean(cachedSettings.summaryFiltersCollapsed),
+      repAnalyticsFiltersCollapsed: Boolean(cachedSettings.repAnalyticsFiltersCollapsed),
       dimmedOverlayDates: new Set(Array.isArray(cachedSettings.dimmedOverlayDates) ? cachedSettings.dimmedOverlayDates : [])
     };
 
@@ -1355,6 +1637,10 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         repOverlayMode: state.repOverlayMode,
         repTypeFilter: state.repTypeFilter,
         positionOverlayBasis: state.positionOverlayBasis,
+        ribbonCollapsed: state.ribbonCollapsed,
+        activeTab: state.activeTab,
+        summaryFiltersCollapsed: state.summaryFiltersCollapsed,
+        repAnalyticsFiltersCollapsed: state.repAnalyticsFiltersCollapsed,
         dimmedOverlayDates: [...state.dimmedOverlayDates]
       };
     }
@@ -1371,9 +1657,21 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       }
     }
 
-    const exerciseSelect = document.getElementById("exerciseSelect");
+    const topRibbon = document.getElementById("topRibbon");
+    const ribbonToggle = document.getElementById("ribbonToggle");
+    const summaryTabPanel = document.getElementById("summaryTabPanel");
+    const repAnalyticsTabPanel = document.getElementById("repAnalyticsTabPanel");
+    const summaryFilterPanel = document.getElementById("summaryFilterPanel");
+    const summaryFilterToggle = document.getElementById("summaryFilterToggle");
+    const repAnalyticsFilterPanel = document.getElementById("repAnalyticsFilterPanel");
+    const repAnalyticsFilterToggle = document.getElementById("repAnalyticsFilterToggle");
+    const summaryTabButton = document.getElementById("summaryTabButton");
+    const repAnalyticsTabButton = document.getElementById("repAnalyticsTabButton");
+    const summaryExerciseSelect = document.getElementById("summaryExerciseSelect");
+    const repExerciseSelect = document.getElementById("repExerciseSelect");
     const backupFileInput = document.getElementById("backupFileInput");
-    const historyWindow = document.getElementById("historyWindow");
+    const summaryHistoryWindow = document.getElementById("summaryHistoryWindow");
+    const repHistoryWindow = document.getElementById("repHistoryWindow");
     const loadUnitToggle = document.getElementById("loadUnitToggle");
     const loadToggle = document.getElementById("loadToggle");
     const loadEchoMedianToggle = document.getElementById("loadEchoMedianToggle");
@@ -1384,6 +1682,10 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     const chartTooltip = document.getElementById("chartTooltip");
     const chartHitAreas = new Map();
     const exerciseMuscleLookup = buildExerciseMuscleLookup();
+    const mainContent = document.querySelector("main");
+    const exerciseSelects = [summaryExerciseSelect, repExerciseSelect];
+    const historyWindowSelects = [summaryHistoryWindow, repHistoryWindow];
+    let ribbonAutoCollapsePausedUntil = 0;
 
     const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
 
@@ -1588,6 +1890,33 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       return String(value || "").trim().toLowerCase().includes("echo");
     }
 
+    function addCableSegmentEnergy(totals, previous, current, loadKey, positionKey, fallbackPositionKey = null) {
+      const fallbackPrevious = fallbackPositionKey ? asNumber(previous[fallbackPositionKey]) : 0;
+      const fallbackCurrent = fallbackPositionKey ? asNumber(current[fallbackPositionKey], fallbackPrevious) : fallbackPrevious;
+      const previousPosition = asNumber(previous[positionKey], fallbackPrevious);
+      const currentPosition = asNumber(current[positionKey], fallbackCurrent);
+      const deltaCm = currentPosition - previousPosition;
+      if (Math.abs(deltaCm) <= 0.05) return;
+      const previousLoad = asNumber(previous[loadKey]);
+      const currentLoad = asNumber(current[loadKey], previousLoad);
+      const averageLoadKg = Math.max(0, (previousLoad + currentLoad) / 2);
+      const energyJ = averageLoadKg * GRAVITY_M_S2 * Math.abs(deltaCm) / 100;
+      if (deltaCm > 0) totals.concentric += energyJ;
+      else totals.eccentric += energyJ;
+    }
+
+    function segmentEnergyJoules(samples, cableCount) {
+      const totals = { concentric: 0, eccentric: 0 };
+      for (let idx = 1; idx < samples.length; idx += 1) {
+        const previous = samples[idx - 1];
+        const current = samples[idx];
+        addCableSegmentEnergy(totals, previous, current, "load", "position");
+        if (cableCount >= 2) addCableSegmentEnergy(totals, previous, current, "loadB", "positionB", "position");
+      }
+      totals.total = totals.concentric + totals.eccentric;
+      return totals;
+    }
+
     function segmentWorkingReps(session, samples, setNumber) {
       const expectedReps = asInt(session.workingReps || session.totalReps);
       const targetPerCable = asNumber(session.weightPerCableKg);
@@ -1626,6 +1955,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         const segment = workingSamples.slice(startIdx, endIdx + 1);
         if (segment.length < 6) return null;
 
+        const energy = segmentEnergyJoules(segment, cableCount);
         const fullPerCableLoads = [];
         const fullTotalLoads = [];
         segment.forEach(row => {
@@ -1680,6 +2010,9 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
           avgTotalLoadKg: roundOrNull(meanValue(fullTotalLoads), 2),
           medianTotalLoadKg: roundOrNull(medianValue(fullTotalLoads), 2),
           peakTotalLoadKg: roundOrNull(maxOrNull(fullTotalLoads), 2),
+          concentricEnergyJ: roundOrNull(energy.concentric, 1),
+          eccentricEnergyJ: roundOrNull(energy.eccentric, 1),
+          totalEnergyJ: roundOrNull(energy.total, 1),
           timeSec: times,
           perCableLoadKg: perCableLoads,
           totalLoadKg: totalLoads,
@@ -1880,10 +2213,12 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         row.largestEchoRepMedianTotalLoadKg = roundOrNull(maxOrNull(echoTraces.map(trace => trace.medianTotalLoadKg)), 2);
         row.largestEchoRepAverageTotalLoadKg = roundOrNull(maxOrNull(echoTraces.map(trace => trace.avgTotalLoadKg)), 2);
         row.largestEchoRepPeakTotalLoadKg = roundOrNull(maxOrNull(echoTraces.map(trace => trace.peakTotalLoadKg)), 2);
+        row.largestEchoRepEnergyJ = roundOrNull(maxOrNull(echoTraces.map(trace => trace.totalEnergyJ)), 1);
         row.largestNonEchoRepMedianWeightPerCableKg = roundOrNull(maxOrNull(nonEchoTraces.map(trace => trace.medianPerCableLoadKg)), 2);
         row.largestNonEchoRepAverageWeightPerCableKg = roundOrNull(maxOrNull(nonEchoTraces.map(trace => trace.avgPerCableLoadKg)), 2);
         row.largestNonEchoRepMedianTotalLoadKg = roundOrNull(maxOrNull(nonEchoTraces.map(trace => trace.medianTotalLoadKg)), 2);
         row.largestNonEchoRepAverageTotalLoadKg = roundOrNull(maxOrNull(nonEchoTraces.map(trace => trace.avgTotalLoadKg)), 2);
+        row.largestNonEchoRepEnergyJ = roundOrNull(maxOrNull(nonEchoTraces.map(trace => trace.totalEnergyJ)), 1);
       });
 
       const exerciseGroups = new Map();
@@ -1954,6 +2289,17 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     function fmtLoad(value, digits = 1) {
       const text = fmtNumber(displayLoadValue(value), digits);
       return text === "-" ? "-" : `${text} ${loadUnitText()}`;
+    }
+
+    function fmtEnergy(value, digits = 1) {
+      const number = Number(value);
+      const text = fmtNumber(Number.isFinite(number) ? number / 1000 : null, digits);
+      return text === "-" ? "-" : `${text} kJ`;
+    }
+
+    function fmtEnergyJ(value, digits = 0) {
+      const text = fmtNumber(value, digits);
+      return text === "-" ? "-" : `${text} J`;
     }
 
     function tooltipLoad(value, digits = 1) {
@@ -2062,7 +2408,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
     function populateExerciseSelect() {
       const previous = state.exerciseId;
-      exerciseSelect.innerHTML = [
+      const options = [
         `<option value="${ALL_EXERCISES_ID}">All Exercises</option>`,
         ...DATA.exercises.map(exercise =>
         `<option value="${exercise.id}">${exercise.name}</option>`
@@ -2071,7 +2417,22 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       state.exerciseId = isValidExerciseId(previous)
         ? previous
         : ALL_EXERCISES_ID;
-      exerciseSelect.value = state.exerciseId;
+      exerciseSelects.forEach(select => {
+        select.innerHTML = options;
+        select.value = state.exerciseId;
+      });
+    }
+
+    function syncExerciseSelects() {
+      exerciseSelects.forEach(select => {
+        select.value = state.exerciseId;
+      });
+    }
+
+    function syncHistoryWindowSelects() {
+      historyWindowSelects.forEach(select => {
+        select.value = state.historyWindow;
+      });
     }
 
     async function loadBackupFile(file) {
@@ -2096,9 +2457,55 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       }
     }
 
+    function updateStickyOffsets() {
+      const topOffset = Math.ceil(topRibbon.getBoundingClientRect().height + 12);
+      document.documentElement.style.setProperty("--rep-filter-sticky-top", `${topOffset}px`);
+    }
+
+    function applyRibbonState() {
+      topRibbon.classList.toggle("is-collapsed", state.ribbonCollapsed);
+      ribbonToggle.setAttribute("aria-expanded", String(!state.ribbonCollapsed));
+      ribbonToggle.textContent = state.ribbonCollapsed ? "+" : "-";
+      ribbonToggle.title = state.ribbonCollapsed ? "Expand top ribbon" : "Collapse top ribbon";
+      updateStickyOffsets();
+      window.requestAnimationFrame(updateStickyOffsets);
+      window.setTimeout(updateStickyOffsets, 200);
+    }
+
+    function autoCollapseRibbon() {
+      if (state.ribbonCollapsed || Date.now() < ribbonAutoCollapsePausedUntil) return;
+      state.ribbonCollapsed = true;
+      applyRibbonState();
+      saveDashboardCache();
+    }
+
+    function applyDashboardTabState() {
+      const showRepAnalytics = state.activeTab === "repAnalytics";
+      summaryTabPanel.classList.toggle("is-hidden", showRepAnalytics);
+      repAnalyticsTabPanel.classList.toggle("is-hidden", !showRepAnalytics);
+      summaryTabButton.classList.toggle("is-active", !showRepAnalytics);
+      repAnalyticsTabButton.classList.toggle("is-active", showRepAnalytics);
+      summaryTabButton.setAttribute("aria-pressed", String(!showRepAnalytics));
+      repAnalyticsTabButton.setAttribute("aria-pressed", String(showRepAnalytics));
+    }
+
+    function applySummaryFilterState() {
+      summaryFilterPanel.classList.toggle("is-collapsed", state.summaryFiltersCollapsed);
+      summaryFilterToggle.setAttribute("aria-expanded", String(!state.summaryFiltersCollapsed));
+      summaryFilterToggle.textContent = state.summaryFiltersCollapsed ? "+" : "-";
+      summaryFilterToggle.title = state.summaryFiltersCollapsed ? "Expand filters" : "Collapse filters";
+    }
+
+    function applyRepAnalyticsFilterState() {
+      repAnalyticsFilterPanel.classList.toggle("is-collapsed", state.repAnalyticsFiltersCollapsed);
+      repAnalyticsFilterToggle.setAttribute("aria-expanded", String(!state.repAnalyticsFiltersCollapsed));
+      repAnalyticsFilterToggle.textContent = state.repAnalyticsFiltersCollapsed ? "+" : "-";
+      repAnalyticsFilterToggle.title = state.repAnalyticsFiltersCollapsed ? "Expand filters" : "Collapse filters";
+    }
+
     function setupControls() {
       populateExerciseSelect();
-      historyWindow.value = state.historyWindow;
+      syncHistoryWindowSelects();
       loadUnitToggle.checked = state.loadUnit === "lbs";
       loadToggle.checked = state.loadBasis === "total";
       loadEchoMedianToggle.checked = state.showLoadEchoMedian;
@@ -2106,21 +2513,61 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       repOverlayMode.value = state.repOverlayMode;
       repTypeFilter.value = state.repTypeFilter;
       positionOverlayBasis.value = state.positionOverlayBasis;
+      applyRibbonState();
+      applyDashboardTabState();
+      applySummaryFilterState();
+      applyRepAnalyticsFilterState();
       if (cachedDashboard?.data) {
         document.querySelector("label[for='backupFileInput'].file-button").textContent = "Cached data";
       }
-      exerciseSelect.addEventListener("change", () => {
-        state.exerciseId = exerciseSelect.value;
+      ribbonToggle.addEventListener("click", () => {
+        ribbonAutoCollapsePausedUntil = Date.now() + 450;
+        state.ribbonCollapsed = !state.ribbonCollapsed;
+        applyRibbonState();
         saveDashboardCache();
-        render();
+      });
+      summaryFilterToggle.addEventListener("click", () => {
+        state.summaryFiltersCollapsed = !state.summaryFiltersCollapsed;
+        applySummaryFilterState();
+        saveDashboardCache();
+      });
+      repAnalyticsFilterToggle.addEventListener("click", () => {
+        state.repAnalyticsFiltersCollapsed = !state.repAnalyticsFiltersCollapsed;
+        applyRepAnalyticsFilterState();
+        saveDashboardCache();
+      });
+      mainContent.addEventListener("pointerdown", autoCollapseRibbon);
+      window.addEventListener("scroll", autoCollapseRibbon, { passive: true });
+      [summaryTabButton, repAnalyticsTabButton].forEach(button => {
+        button.addEventListener("click", () => {
+          const nextTab = button.dataset.tab;
+          if (state.activeTab === nextTab) return;
+          state.activeTab = nextTab;
+          applyDashboardTabState();
+          chartTooltip.style.display = "none";
+          saveDashboardCache();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          render();
+        });
+      });
+      exerciseSelects.forEach(select => {
+        select.addEventListener("change", () => {
+          state.exerciseId = select.value;
+          syncExerciseSelects();
+          saveDashboardCache();
+          render();
+        });
       });
       backupFileInput.addEventListener("change", event => {
         loadBackupFile(event.target.files?.[0]);
       });
-      historyWindow.addEventListener("change", () => {
-        state.historyWindow = historyWindow.value;
-        saveDashboardCache();
-        render();
+      historyWindowSelects.forEach(select => {
+        select.addEventListener("change", () => {
+          state.historyWindow = select.value;
+          syncHistoryWindowSelects();
+          saveDashboardCache();
+          render();
+        });
       });
       loadUnitToggle.addEventListener("change", () => {
         state.loadUnit = loadUnitToggle.checked ? "lbs" : "kg";
@@ -2235,19 +2682,31 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       return DATA.exercises.find(exercise => exercise.id === state.exerciseId) || DATA.exercises[0];
     }
 
+    function totalEnergyForRows(rows) {
+      const activeWorkoutExerciseKeys = new Set(rows.map(row => `${row.workoutId}::${row.exerciseId}`));
+      return DATA.repTraces
+        .filter(trace => activeWorkoutExerciseKeys.has(`${traceWorkoutId(trace)}::${trace.exerciseId}`))
+        .reduce((sum, trace) => {
+          const energy = Number(trace.totalEnergyJ);
+          return Number.isFinite(energy) ? sum + energy : sum;
+        }, 0);
+    }
+
     function renderKpis(rows) {
       const setCount = rows.reduce((sum, row) => sum + Number(row.sets || 0), 0);
       const totalReps = rows.reduce((sum, row) => sum + Number(row.workingReps || 0), 0);
       const totalVolume = rows.reduce((sum, row) => sum + Number(row.totalVolumeKg || 0), 0);
       const maxLoad = Math.max(...rows.map(row => Number(row[loadField()] || 0)), 0);
       const bestE1rm = Math.max(...rows.map(row => Number(row.estimatedOneRepMaxKg || 0)), 0);
+      const totalEnergy = totalEnergyForRows(rows);
       const latest = rows.length ? rows[rows.length - 1].localDate : "-";
       const kpis = [
         ["Workouts", rows.length, `${setCount} completed sets`],
         ["Working Reps", totalReps, "warmup and zero-rep sessions excluded"],
         ["Best Load", fmtLoad(maxLoad, 1), loadUnitLabel()],
         ["Total Volume", fmtLoad(totalVolume, 0), "from Vitruvian volume"],
-        ["Best Est. 1RM", fmtLoad(bestE1rm, 1), `latest ${latest}`]
+        ["Best Est. 1RM", fmtLoad(bestE1rm, 1), `latest ${latest}`],
+        ["Total Energy", fmtEnergy(totalEnergy, 1), "selected exercise and window"]
       ];
       document.getElementById("kpis").innerHTML = kpis.map(([title, value, note]) => `
         <div class="kpi">
@@ -2679,12 +3138,16 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       if (state.repOverlayMode === "maxMedian") {
         return state.loadBasis === "total" ? "medianTotalLoadKg" : "medianPerCableLoadKg";
       }
+      if (state.repOverlayMode === "maxEnergy") {
+        return "totalEnergyJ";
+      }
       return null;
     }
 
     function overlayModeLabel() {
       if (state.repOverlayMode === "maxAverage") return "Max average";
       if (state.repOverlayMode === "maxMedian") return "Max median";
+      if (state.repOverlayMode === "maxEnergy") return "Max energy";
       return "All";
     }
 
@@ -2699,9 +3162,14 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     function maxRepTypeDescription() {
-      if (state.repTypeFilter === "echo") return "top echo rep";
-      if (state.repTypeFilter === "nonEcho") return "top non-echo rep";
-      return "top echo rep and top non-echo rep";
+      const qualifier = state.repOverlayMode === "maxEnergy"
+        ? "highest-energy"
+        : state.repOverlayMode === "maxAverage"
+          ? "highest-average-load"
+          : "highest-median-load";
+      if (state.repTypeFilter === "echo") return `${qualifier} echo rep`;
+      if (state.repTypeFilter === "nonEcho") return `${qualifier} non-echo rep`;
+      return `${qualifier} echo rep and ${qualifier} non-echo rep`;
     }
 
     function traceMatchesRepTypeFilter(trace) {
@@ -2715,9 +3183,86 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       return Number.isFinite(value) ? value : -Infinity;
     }
 
+    function traceUniqueKey(trace) {
+      return [
+        traceWorkoutId(trace),
+        trace.exerciseId,
+        trace.dateTime,
+        trace.mode || "",
+        trace.setNumber ?? "",
+        trace.repIndex ?? ""
+      ].join("::");
+    }
+
+    function allOverlayHighlightSpecs() {
+      return [
+        {
+          role: "maxAverage",
+          field: state.loadBasis === "total" ? "avgTotalLoadKg" : "avgPerCableLoadKg"
+        },
+        {
+          role: "maxMedian",
+          field: state.loadBasis === "total" ? "medianTotalLoadKg" : "medianPerCableLoadKg"
+        },
+        {
+          role: "maxEnergy",
+          field: "totalEnergyJ"
+        }
+      ];
+    }
+
+    function annotateAllOverlayHighlights(traces) {
+      const annotated = traces.map(trace => ({ ...trace, highlightRoles: [] }));
+      const annotatedByKey = new Map(annotated.map(trace => [traceUniqueKey(trace), trace]));
+      allOverlayHighlightSpecs().forEach(spec => {
+        const bestByDateAndMode = new Map();
+        traces.forEach(trace => {
+          const key = `${trace.date}::${traceModeKey(trace)}`;
+          const current = bestByDateAndMode.get(key);
+          if (!current || traceMetricValue(trace, spec.field) > traceMetricValue(current, spec.field)) {
+            bestByDateAndMode.set(key, trace);
+          }
+        });
+        bestByDateAndMode.forEach(trace => {
+          const annotatedTrace = annotatedByKey.get(traceUniqueKey(trace));
+          if (annotatedTrace && !annotatedTrace.highlightRoles.includes(spec.role)) {
+            annotatedTrace.highlightRoles.push(spec.role);
+          }
+        });
+      });
+      return annotated;
+    }
+
+    function traceHighlightRoles(trace) {
+      return Array.isArray(trace.highlightRoles) ? trace.highlightRoles : [];
+    }
+
+    function traceHasAllOverlayHighlight(trace) {
+      return state.repOverlayMode === "all" &&
+        traceHighlightRoles(trace).length > 0 &&
+        !isOverlayDateDimmed(trace.date);
+    }
+
+    function highlightedTraceLineWidth(trace) {
+      const roles = traceHighlightRoles(trace);
+      let width = 2.4;
+      if (roles.includes("maxMedian")) width = Math.max(width, 2.9);
+      if (roles.includes("maxEnergy")) width = Math.max(width, 3.4);
+      return width + Math.max(0, roles.length - 1) * 0.25;
+    }
+
+    function allOverlayHighlightNote() {
+      return state.repOverlayMode === "all"
+        ? " Max average, max median and max energy reps are highlighted with heavier curves."
+        : "";
+    }
+
     function selectRepOverlayTraces(traces) {
       const field = overlayRankField();
-      if (!field) return traces.map(trace => ({ ...trace, overlayModeLabel: "All" }));
+      if (!field) {
+        return annotateAllOverlayHighlights(traces)
+          .map(trace => ({ ...trace, overlayModeLabel: "All" }));
+      }
       const bestByDateAndMode = new Map();
       traces.forEach(trace => {
         const key = `${trace.date}::${traceModeKey(trace)}`;
@@ -2743,12 +3288,44 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       return selectRepOverlayTraces(sourceTraces);
     }
 
+    function drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, strokeStyle, lineWidth) {
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.setLineDash(isEchoMode(trace.mode) ? [6, 4] : []);
+      ctx.beginPath();
+      let hasStarted = false;
+      trace.timeSec.forEach((time, idx) => {
+        const yValue = displayLoadValue(trace[loadKey][idx]);
+        if (!Number.isFinite(yValue)) {
+          hasStarted = false;
+          return;
+        }
+        const x = xScale(time);
+        const y = yScale(yValue);
+        if (!hasStarted) {
+          ctx.moveTo(x, y);
+          hasStarted = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    }
+
+    function drawHighlightedLoadTrace(ctx, trace, loadKey, xScale, yScale, color) {
+      const lineWidth = highlightedTraceLineWidth(trace);
+      drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, "rgba(255, 255, 255, 0.92)", lineWidth + 3.2);
+      drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, `${color}f2`, lineWidth);
+    }
+
     function renderRepOverlay(activeRows, selectedTraces = null) {
       const canvas = document.getElementById("repOverlay");
       const traces = selectedTraces || selectedOverlayTraces(activeRows);
       document.getElementById("repOverlayNote").textContent =
         state.repOverlayMode === "all"
-          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.`
+          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.${allOverlayHighlightNote()}`
           : `${overlayModeLabel()} shows the ${maxRepTypeDescription()} for each selected workout date. Echo traces are dashed.`;
       if (!traces.length) {
         drawEmpty(canvas, "No working rep traces were detected for this selection.");
@@ -2781,20 +3358,26 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
       traces.forEach(trace => {
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
-        ctx.strokeStyle = `${color}${isOverlayDateDimmed(trace.date) ? "88" : "aa"}`;
-        ctx.lineWidth = state.repOverlayMode === "all"
-          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
+        const strokeAlpha = isOverlayDateDimmed(trace.date)
+          ? "82"
+          : (state.repOverlayMode === "all" ? "38" : "aa");
+        const lineWidth = state.repOverlayMode === "all"
+          ? (isOverlayDateDimmed(trace.date) ? 1.0 : 1.1)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
-        ctx.setLineDash(isEchoMode(trace.mode) ? [6, 4] : []);
-        ctx.beginPath();
-        trace.timeSec.forEach((time, idx) => {
-          const x = xScale(time);
-          const y = yScale(displayLoadValue(trace[loadKey][idx]));
-          if (idx === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
+        drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
       });
+      if (state.repOverlayMode === "all") {
+        traces.filter(traceHasAllOverlayHighlight).forEach(trace => {
+          drawHighlightedLoadTrace(
+            ctx,
+            trace,
+            loadKey,
+            xScale,
+            yScale,
+            dateColors.get(trace.date) || "#2563eb"
+          );
+        });
+      }
       ctx.setLineDash([]);
 
       const allDatesDimmed = dates.every(date => isOverlayDateDimmed(date));
@@ -2855,6 +3438,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     function drawTracePath(ctx, trace, values, xScale, yScale, strokeStyle, lineWidth) {
       ctx.strokeStyle = strokeStyle;
       ctx.lineWidth = lineWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       ctx.setLineDash(isEchoMode(trace.mode) ? [6, 4] : []);
       ctx.beginPath();
       let hasStarted = false;
@@ -2875,6 +3460,12 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       ctx.stroke();
     }
 
+    function drawHighlightedPositionTrace(ctx, trace, values, xScale, yScale, color) {
+      const lineWidth = highlightedTraceLineWidth(trace);
+      drawTracePath(ctx, trace, values, xScale, yScale, "rgba(255, 255, 255, 0.92)", lineWidth + 3.2);
+      drawTracePath(ctx, trace, values, xScale, yScale, `${color}f2`, lineWidth);
+    }
+
     function renderPositionOverlay(activeRows, selectedTraces = null) {
       const canvas = document.getElementById("positionOverlay");
       const traces = selectedTraces || selectedOverlayTraces(activeRows);
@@ -2882,7 +3473,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       const positionLabel = positionOverlayLabel();
       document.getElementById("positionOverlayNote").textContent =
         state.repOverlayMode === "all"
-          ? `${positionLabel} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.`
+          ? `${positionLabel} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.${allOverlayHighlightNote()}`
           : `${overlayModeLabel()} uses the same ${maxRepTypeDescription()} as the load overlay; ${positionLabel.toLowerCase()} position is shown. Echo traces are dashed.`;
       if (!traces.length) {
         drawEmpty(canvas, "No working rep positions were detected for this selection.");
@@ -2923,12 +3514,27 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
       traces.forEach(trace => {
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
-        const strokeStyle = `${color}${isOverlayDateDimmed(trace.date) ? "88" : "dd"}`;
+        const strokeAlpha = isOverlayDateDimmed(trace.date)
+          ? "82"
+          : (state.repOverlayMode === "all" ? "38" : "dd");
+        const strokeStyle = `${color}${strokeAlpha}`;
         const lineWidth = state.repOverlayMode === "all"
-          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
+          ? (isOverlayDateDimmed(trace.date) ? 1.0 : 1.1)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
         drawTracePath(ctx, trace, tracePositionValues(trace, positionField), xScale, yScale, strokeStyle, lineWidth);
       });
+      if (state.repOverlayMode === "all") {
+        traces.filter(traceHasAllOverlayHighlight).forEach(trace => {
+          drawHighlightedPositionTrace(
+            ctx,
+            trace,
+            tracePositionValues(trace, positionField),
+            xScale,
+            yScale,
+            dateColors.get(trace.date) || "#2563eb"
+          );
+        });
+      }
       ctx.setLineDash([]);
 
       ctx.textAlign = "left";
@@ -2963,6 +3569,25 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         }
       }
       return segments;
+    }
+
+    function drawPhaseSegment(ctx, segment, xScale, yScale, strokeStyle, lineWidth) {
+      const trace = segment.trace;
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.setLineDash(isEchoMode(trace.mode) ? [6, 4] : []);
+      ctx.beginPath();
+      ctx.moveTo(xScale(segment.p0), yScale(segment.l0));
+      ctx.lineTo(xScale(segment.p1), yScale(segment.l1));
+      ctx.stroke();
+    }
+
+    function drawHighlightedPhaseSegment(ctx, segment, xScale, yScale, color) {
+      const lineWidth = highlightedTraceLineWidth(segment.trace);
+      drawPhaseSegment(ctx, segment, xScale, yScale, "rgba(255, 255, 255, 0.92)", lineWidth + 3.2);
+      drawPhaseSegment(ctx, segment, xScale, yScale, `${color}f2`, lineWidth);
     }
 
     function drawLoadPositionPhaseChart(canvas, traces, phase) {
@@ -3014,25 +3639,48 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       segments.forEach(segment => {
         const trace = segment.trace;
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
-        ctx.strokeStyle = `${color}${isOverlayDateDimmed(trace.date) ? "88" : "cc"}`;
-        ctx.lineWidth = state.repOverlayMode === "all"
-          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
+        const strokeAlpha = isOverlayDateDimmed(trace.date)
+          ? "82"
+          : (state.repOverlayMode === "all" ? "38" : "cc");
+        const lineWidth = state.repOverlayMode === "all"
+          ? (isOverlayDateDimmed(trace.date) ? 1.0 : 1.1)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.2);
-        ctx.setLineDash(isEchoMode(trace.mode) ? [6, 4] : []);
-        ctx.beginPath();
-        ctx.moveTo(xScale(segment.p0), yScale(segment.l0));
-        ctx.lineTo(xScale(segment.p1), yScale(segment.l1));
-        ctx.stroke();
+        drawPhaseSegment(ctx, segment, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
       });
+      if (state.repOverlayMode === "all") {
+        segments.filter(segment => traceHasAllOverlayHighlight(segment.trace)).forEach(segment => {
+          drawHighlightedPhaseSegment(
+            ctx,
+            segment,
+            xScale,
+            yScale,
+            dateColors.get(segment.trace.date) || "#2563eb"
+          );
+        });
+      }
       ctx.setLineDash([]);
     }
 
     function renderLoadPositionPhaseCharts(activeRows, selectedTraces = null) {
       const traces = selectedTraces || selectedOverlayTraces(activeRows);
       document.getElementById("loadPositionNote").textContent =
-        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
+        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.${allOverlayHighlightNote()}`;
       drawLoadPositionPhaseChart(document.getElementById("concentricLoadPositionChart"), traces, "concentric");
       drawLoadPositionPhaseChart(document.getElementById("eccentricLoadPositionChart"), traces, "eccentric");
+    }
+
+    function historyRepEnergy(row, echoMode) {
+      const field = echoMode ? "largestEchoRepEnergyJ" : "largestNonEchoRepEnergyJ";
+      const direct = row[field];
+      if (direct !== null && direct !== undefined && direct !== "" && Number.isFinite(Number(direct))) {
+        return Number(direct);
+      }
+      const rowKey = `${row.workoutId}::${row.exerciseId}`;
+      const energies = DATA.repTraces
+        .filter(trace => `${traceWorkoutId(trace)}::${trace.exerciseId}` === rowKey && isEchoMode(trace.mode) === echoMode)
+        .map(trace => Number(trace.totalEnergyJ))
+        .filter(value => Number.isFinite(value));
+      return energies.length ? Math.max(...energies) : null;
     }
 
     function renderHistoryTable(rows) {
@@ -3044,6 +3692,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         <th>Reps</th>
         <th>Max Load</th>
         <th class="group-separator">Non-Echo Reps</th>
+        <th>Non-Echo Energy</th>
         <th>Volume</th>
         <th>Est. 1RM</th>
         <th>Avg MCV</th>
@@ -3051,6 +3700,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         <th>Echo Median</th>
         <th>Echo Avg</th>
         <th>Echo Peak</th>
+        <th>Echo Energy</th>
       `;
       const newest = [...rows].sort((a, b) => b.timestamp - a.timestamp);
       document.getElementById("historyRows").innerHTML = newest.map(row => `
@@ -3062,6 +3712,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
           <td>${row.workingReps}</td>
           <td>${fmtLoad(row[loadField()], 1)}</td>
           <td class="group-separator">${row.nonEchoRepCount || 0}</td>
+          <td>${fmtEnergyJ(historyRepEnergy(row, false), 0)}</td>
           <td>${fmtLoad(row.totalVolumeKg, 0)}</td>
           <td>${fmtLoad(row.estimatedOneRepMaxKg, 1)}</td>
           <td>${fmtNumber(row.avgMcvMmS, 1)} mm/s</td>
@@ -3069,6 +3720,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
           <td>${fmtLoad(row[bestEchoRepMedianLoadField()], 1)}</td>
           <td>${fmtLoad(row[bestEchoRepAverageLoadField()], 1)}</td>
           <td>${fmtLoad(row[bestEchoRepPeakLoadField()], 1)}</td>
+          <td>${fmtEnergyJ(historyRepEnergy(row, true), 0)}</td>
         </tr>
       `).join("");
     }
@@ -3150,7 +3802,10 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       renderHistoryTable(rows);
     }
 
-    window.addEventListener("resize", () => render());
+    window.addEventListener("resize", () => {
+      updateStickyOffsets();
+      render();
+    });
     setupControls();
     setupChartTooltips();
     render();
