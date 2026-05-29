@@ -1,0 +1,12 @@
+Refined exercise body-muscle map
+
+Generated from:
+- Project Phoenix exercise_dump.json
+  https://github.com/9thLevelSoftware/Project-Phoenix-MP
+- free-exercise-db dist/exercises.json
+  https://github.com/yuhonas/free-exercise-db
+- body-muscles anatomical region ids
+  https://vulovix.github.io/body-muscles/
+
+Manual overrides preserve dashboard-specific rules previously requested for
+High Bar Squat and Conventional Deadlift.

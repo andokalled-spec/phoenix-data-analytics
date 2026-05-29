@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-05-29T12:21:38.856Z",
+  "exerciseCount": 572,
+  "withProjectPhoenixMuscles": 554,
+  "withFreeExerciseDbMatch": 128,
+  "manualOverrides": 4,
+  "heuristicFallbacks": 6,
+  "broadGroupFallbacks": 8,
+  "withoutBodyMuscles": 0
+}

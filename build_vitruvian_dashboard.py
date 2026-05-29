@@ -659,7 +659,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]], columns: list[str]) -> Non
         writer.writerows(rows)
 
 
-def dashboard_html(data_json: str, muscle_map_json: str) -> str:
+def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json: str) -> str:
     template = r"""<!doctype html>
 <html lang="en">
 <head>
@@ -674,6 +674,18 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       --ink: #17202a;
       --muted: #667085;
       --line: #d9dee7;
+      --grid-line: #eef1f5;
+      --canvas: #ffffff;
+      --control-bg: #ffffff;
+      --control-ink: #17202a;
+      --table-group-bg: #f8fafc;
+      --hover-bg: #f8fafc;
+      --legend-muted-bg: #f1f3f6;
+      --legend-muted-ink: #8a94a3;
+      --separator-line: #b8c0cc;
+      --inactive-point: #c9d1dc;
+      --body-region-idle: #15191f;
+      --body-outline: #6b7280;
       --blue: #2563eb;
       --teal: #0f766e;
       --red: #dc2626;
@@ -684,6 +696,28 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       --rep-filter-sticky-top: 72px;
     }
 
+    body.theme-dark {
+      color-scheme: dark;
+      --bg: #0b1120;
+      --panel: #111827;
+      --ink: #e5e7eb;
+      --muted: #a6b0bf;
+      --line: #2b3648;
+      --grid-line: #1f2937;
+      --canvas: #0f172a;
+      --control-bg: #0f172a;
+      --control-ink: #e5e7eb;
+      --table-group-bg: #111827;
+      --hover-bg: #1f2937;
+      --legend-muted-bg: #172033;
+      --legend-muted-ink: #818da0;
+      --separator-line: #4b5563;
+      --inactive-point: #4b5563;
+      --body-region-idle: #15191f;
+      --body-outline: #7b8494;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+    }
+
     * { box-sizing: border-box; }
 
     body {
@@ -691,6 +725,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       font-family: Inter, Segoe UI, Arial, sans-serif;
       background: var(--bg);
       color: var(--ink);
+      transition: background 160ms ease, color 160ms ease;
     }
 
     header {
@@ -718,9 +753,9 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       max-width: 1400px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(260px, 1fr) minmax(560px, auto);
       gap: 20px;
-      align-items: end;
+      align-items: center;
     }
 
     .header-copy {
@@ -777,23 +812,49 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-      justify-content: flex-end;
+      display: grid;
+      grid-template-columns: minmax(170px, 210px) minmax(430px, 1fr);
+      gap: 10px;
+      align-items: stretch;
+      justify-content: end;
     }
 
     .control {
       display: grid;
-      gap: 6px;
-      min-width: 178px;
+      gap: 8px;
+      min-width: 0;
     }
 
-    .stacked-control {
-      min-width: 210px;
-      align-self: stretch;
-      align-content: end;
+    .banner-control {
+      padding: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.74);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .file-control {
+      align-content: stretch;
+    }
+
+    .switch-control {
+      min-width: 0;
+    }
+
+    .switch-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(140px, 1fr));
+      gap: 8px;
+    }
+
+    .switch-card {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid #334155;
+      border-radius: 7px;
+      background: #0f172a;
     }
 
     label {
@@ -816,13 +877,20 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     .switch-row {
-      min-height: 38px;
+      min-height: 30px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-between;
+      gap: 8px;
       color: #fff;
       font-size: 13px;
       white-space: nowrap;
+    }
+
+    .switch-card .switch-row span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .switch {
@@ -862,30 +930,45 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     input:checked + .slider { background: var(--teal); }
     input:checked + .slider:before { transform: translateX(26px); }
 
+    .switch:focus-within .slider {
+      outline: 2px solid rgba(45, 212, 191, 0.65);
+      outline-offset: 2px;
+    }
+
     .file-input {
       display: none;
     }
 
     .file-button {
       width: 100%;
-      min-height: 38px;
+      min-height: 62px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid #334155;
+      border: 1px solid #3b82f6;
       border-radius: 6px;
-      background: #0f172a;
+      background: #1d4ed8;
       color: #fff;
-      padding: 8px 10px;
+      padding: 10px 12px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 800;
       text-transform: none;
       letter-spacing: 0;
       cursor: pointer;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .file-button:hover {
-      border-color: #64748b;
+      background: #2563eb;
+      border-color: #60a5fa;
+    }
+
+    .file-button:focus-visible {
+      outline: 2px solid rgba(96, 165, 250, 0.85);
+      outline-offset: 2px;
     }
 
     main {
@@ -1007,7 +1090,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       align-items: center;
       margin-bottom: 12px;
       padding-bottom: 10px;
-      border-bottom: 1px solid #eef1f5;
+      border-bottom: 1px solid var(--grid-line);
     }
 
     .filter-panel.is-collapsed .filter-body {
@@ -1039,7 +1122,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       flex: 0 0 auto;
       border: 1px solid var(--line);
       border-radius: 6px;
-      background: #fff;
+      background: var(--control-bg);
       color: var(--ink);
       font-size: 20px;
       line-height: 1;
@@ -1060,8 +1143,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     .filter-toggle:hover {
-      border-color: #9aa4b2;
-      background: #f8fafc;
+      border-color: var(--separator-line);
+      background: var(--hover-bg);
     }
 
     .filter-body {
@@ -1084,7 +1167,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     .filter-body .legend {
       margin-top: 2px;
       padding-top: 10px;
-      border-top: 1px solid #eef1f5;
+      border-top: 1px solid var(--grid-line);
       max-height: 104px;
     }
 
@@ -1100,7 +1183,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       padding: 5px 8px;
       border: 1px solid var(--line);
       border-radius: 6px;
-      background: #fff;
+      background: var(--control-bg);
       color: var(--muted);
       font-size: 12px;
       font-weight: 700;
@@ -1134,8 +1217,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     .mini-control select {
       min-width: 110px;
       min-height: 32px;
-      background: #fff;
-      color: var(--ink);
+      background: var(--control-bg);
+      color: var(--control-ink);
       border-color: var(--line);
       padding: 6px 28px 6px 8px;
     }
@@ -1151,7 +1234,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       width: 100%;
       height: 320px;
       border-radius: 6px;
-      background: #fff;
+      background: var(--canvas);
     }
 
     .chart-tooltip {
@@ -1206,7 +1289,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       padding: 8px 10px;
       border: 1px solid var(--line);
       border-radius: 6px;
-      background: #fff;
+      background: var(--control-bg);
       min-width: 0;
     }
 
@@ -1218,6 +1301,264 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     .muscle-balance-item span {
       color: var(--muted);
       font-size: 12px;
+    }
+
+    .muscle-breakdown-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.3fr) minmax(240px, 0.7fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .body-map {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #050505;
+    }
+
+    .body-map svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 420px;
+    }
+
+    .body-chart-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .body-chart-panel {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .body-view-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .body-chart-host {
+      min-height: 410px;
+      height: min(64vh, 460px);
+    }
+
+    .body-map .body-chart-container {
+      min-height: 100%;
+      padding: 0 !important;
+    }
+
+    .body-map .body-chart-svg {
+      max-width: 100% !important;
+      max-height: 100% !important;
+      height: 100% !important;
+      filter: none !important;
+    }
+
+    .body-label {
+      fill: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .body-outline {
+      fill: none;
+      stroke: var(--body-outline);
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.8;
+    }
+
+    .body-detail {
+      fill: none;
+      stroke: var(--body-outline);
+      stroke-width: 1;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.34;
+      pointer-events: none;
+    }
+
+    .body-region {
+      fill: var(--body-region-idle);
+      stroke: #050505;
+      stroke-width: 1.2;
+      cursor: default;
+      transition: fill 160ms ease, opacity 160ms ease, stroke 160ms ease;
+    }
+
+    .body-region:hover {
+      stroke: var(--ink);
+      stroke-width: 1.8;
+    }
+
+    .muscle-breakdown-side {
+      display: grid;
+      gap: 12px;
+    }
+
+    .muscle-scale {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .muscle-scale-bar {
+      height: 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: linear-gradient(90deg, var(--body-region-idle), #fde68a, #f97316, #ef4444);
+    }
+
+    .muscle-scale-labels {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .muscle-breakdown-list {
+      display: grid;
+      gap: 8px;
+      max-height: min(72vh, 760px);
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .muscle-breakdown-row {
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1fr) auto 18px;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--control-bg);
+      color: var(--muted);
+      font-size: 12px;
+      transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+      scroll-margin: 16px;
+      cursor: pointer;
+    }
+
+    .muscle-breakdown-row:hover {
+      background: var(--hover-bg);
+    }
+
+    .muscle-breakdown-row:focus-visible {
+      outline: 2px solid rgba(37, 99, 235, 0.55);
+      outline-offset: 2px;
+    }
+
+    .muscle-breakdown-row.is-selected {
+      border-color: #2563eb;
+      background: rgba(37, 99, 235, 0.12);
+      box-shadow: inset 0 0 0 1px #2563eb;
+      color: var(--ink);
+    }
+
+    .muscle-breakdown-row strong {
+      color: var(--ink);
+      font-size: 12px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .muscle-breakdown-row.is-selected strong {
+      color: #1d4ed8;
+    }
+
+    .theme-dark .muscle-breakdown-row.is-selected strong {
+      color: #93c5fd;
+    }
+
+    .muscle-breakdown-row .swatch {
+      width: 12px;
+      height: 12px;
+    }
+
+    .muscle-breakdown-toggle {
+      opacity: 0;
+      color: #2563eb;
+      font-size: 14px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .muscle-breakdown-row.is-selected .muscle-breakdown-toggle {
+      opacity: 1;
+    }
+
+    .muscle-contribution-insert {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      margin: -4px 0 8px;
+      padding: 10px;
+      min-height: 150px;
+      max-height: 280px;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+
+    .muscle-contribution-inner {
+      min-width: 520px;
+      overflow-x: auto;
+    }
+
+    .muscle-contribution-table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .muscle-contribution-table th,
+    .muscle-contribution-table td {
+      padding: 5px 6px;
+      border-bottom: 1px solid var(--grid-line);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .muscle-contribution-table th:nth-child(2),
+    .muscle-contribution-table td:nth-child(2) {
+      white-space: normal;
+      min-width: 120px;
+    }
+
+    .muscle-contribution-table th {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .muscle-contribution-table td:nth-child(3),
+    .muscle-contribution-table td:nth-child(4),
+    .muscle-contribution-table td:nth-child(5),
+    .muscle-contribution-table td:nth-child(6),
+    .muscle-contribution-table td:nth-child(7) {
+      text-align: right;
+    }
+
+    .muscle-contribution-table tr:last-child td {
+      border-bottom: 0;
     }
 
     .legend {
@@ -1238,7 +1579,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       padding: 4px 7px;
       border: 1px solid var(--line);
       border-radius: 6px;
-      background: #fff;
+      background: var(--control-bg);
       color: var(--muted);
       cursor: pointer;
       font: inherit;
@@ -1246,7 +1587,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     .legend-item:hover {
-      border-color: #9aa4b2;
+      border-color: var(--separator-line);
     }
 
     .legend-item:focus-visible {
@@ -1255,8 +1596,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     .legend-item.is-muted {
-      background: #f1f3f6;
-      color: #8a94a3;
+      background: var(--legend-muted-bg);
+      color: var(--legend-muted-ink);
     }
 
     .legend-toggle-all {
@@ -1292,20 +1633,20 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     th.group-separator, td.group-separator {
-      border-left: 2px solid #b8c0cc;
+      border-left: 2px solid var(--separator-line);
     }
 
     .history-group-row th {
       padding-top: 7px;
       padding-bottom: 6px;
       text-align: center;
-      background: #f8fafc;
+      background: var(--table-group-bg);
       color: var(--ink);
       font-weight: 800;
     }
 
     .history-group-row .group-spacer {
-      background: #fff;
+      background: var(--panel);
       border-bottom-color: transparent;
     }
 
@@ -1340,11 +1681,12 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       max-width: 1400px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
     }
 
     .tab-button {
+      min-width: 0;
       min-height: 42px;
       border: 1px solid rgba(203, 213, 225, 0.35);
       border-radius: 8px;
@@ -1353,6 +1695,10 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
+      padding: 0 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .tab-button:hover {
@@ -1367,16 +1713,34 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
     @media (max-width: 1000px) {
       .header-inner { grid-template-columns: 1fr; }
-      .controls { justify-content: flex-start; }
+      .controls {
+        grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+        justify-content: stretch;
+      }
       .kpis { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
       .grid { grid-template-columns: 1fr; }
       .phase-chart-grid { grid-template-columns: 1fr; }
+      .muscle-breakdown-layout { grid-template-columns: 1fr; }
       .muscle-balance-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .controls { grid-template-columns: 1fr; }
+      .file-button { min-height: 44px; }
+      .body-chart-pair { grid-template-columns: 1fr; }
+      .body-chart-host { height: 390px; }
     }
 
     @media (max-width: 560px) {
       header { padding: 18px 16px; }
       main { padding: 14px 12px 92px; }
+      .bottom-ribbon { padding: 8px 10px; }
+      .bottom-ribbon-inner { gap: 6px; }
+      .tab-button {
+        min-height: 38px;
+        padding: 0 4px;
+        font-size: 11px;
+      }
       h1 { font-size: 22px; }
       .kpis { grid-template-columns: 1fr; }
       .panel-head { display: grid; }
@@ -1384,6 +1748,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       .filter-controls,
       .summary-filter-panel .filter-controls { grid-template-columns: 1fr; }
       canvas, #repOverlay, #positionOverlay { height: 300px; }
+      .controls,
+      .switch-grid { grid-template-columns: 1fr; }
       .control { width: 100%; }
       .switch-row { white-space: normal; }
       .muscle-balance-list { grid-template-columns: 1fr; }
@@ -1401,29 +1767,46 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         <p class="subtle" id="sourceMeta"></p>
       </div>
       <div class="controls" id="dashboardRibbonControls">
-        <div class="control stacked-control">
-          <label for="backupFileInput">Backup File</label>
-          <label class="file-button" for="backupFileInput">Load JSON/TXT</label>
+        <div class="control banner-control file-control">
+          <label for="backupFileInput">Upload File</label>
+          <label class="file-button" for="backupFileInput" title="Load JSON/TXT">Load JSON/TXT</label>
           <input class="file-input" id="backupFileInput" type="file" accept=".json,.txt,application/json,text/plain">
         </div>
-        <div class="control stacked-control">
-          <label for="loadUnitToggle">Load Units</label>
-          <div class="switch-row">
-            <span>kg</span>
-            <label class="switch">
-              <input id="loadUnitToggle" type="checkbox">
-              <span class="slider"></span>
-            </label>
-            <span>lbs</span>
-          </div>
-          <label for="loadToggle">Load basis</label>
-          <div class="switch-row">
-            <span>Per cable</span>
-            <label class="switch">
-              <input id="loadToggle" type="checkbox" checked>
-              <span class="slider"></span>
-            </label>
-            <span>Total load</span>
+        <div class="control banner-control switch-control">
+          <div class="switch-grid">
+            <div class="switch-card">
+              <label for="loadUnitToggle">Load Units</label>
+              <div class="switch-row">
+                <span>kg</span>
+                <label class="switch">
+                  <input id="loadUnitToggle" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+                <span>lbs</span>
+              </div>
+            </div>
+            <div class="switch-card">
+              <label for="loadToggle">Load basis</label>
+              <div class="switch-row">
+                <span>Per cable</span>
+                <label class="switch">
+                  <input id="loadToggle" type="checkbox" checked>
+                  <span class="slider"></span>
+                </label>
+                <span>Total</span>
+              </div>
+            </div>
+            <div class="switch-card">
+              <label for="themeToggle">Theme</label>
+              <div class="switch-row">
+                <span>Day</span>
+                <label class="switch">
+                  <input id="themeToggle" type="checkbox">
+                  <span class="slider"></span>
+                </label>
+                <span>Night</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1642,18 +2025,84 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
       </section>
     </section>
+
+    <section class="dashboard-tab is-hidden" id="muscleBreakdownTabPanel">
+      <section class="grid">
+      <article class="panel wide filter-panel sticky-filter-panel" id="muscleBreakdownFilterPanel">
+        <div class="panel-head">
+          <div>
+            <h2>Filters</h2>
+          </div>
+          <button class="filter-toggle" id="muscleBreakdownFilterToggle" type="button" aria-expanded="true" aria-controls="muscleBreakdownFilterBody" title="Collapse filters">-</button>
+        </div>
+        <div class="filter-body" id="muscleBreakdownFilterBody">
+          <div class="filter-controls">
+            <div class="mini-control">
+              <label for="muscleExerciseSelect">Exercise</label>
+              <select id="muscleExerciseSelect"></select>
+            </div>
+            <div class="mini-control">
+              <label for="muscleHistoryWindow">History</label>
+              <select id="muscleHistoryWindow">
+                <option value="5">Last 5 workouts</option>
+                <option value="10" selected>Last 10 workouts</option>
+                <option value="20">Last 20 workouts</option>
+                <option value="all">All workouts</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel wide">
+        <div class="panel-head">
+          <div>
+            <h2>Muscle Breakdown</h2>
+            <p class="panel-note" id="muscleBreakdownNote">Front and back body map coloured by filtered workout focus.</p>
+          </div>
+        </div>
+        <div class="muscle-breakdown-layout">
+          <div class="body-map" aria-label="Front and back muscle focus body map">
+            <div class="body-chart-pair">
+              <div class="body-chart-panel">
+                <div class="body-view-label">Front</div>
+                <div class="body-chart-host" id="bodyMusclesFront"></div>
+              </div>
+              <div class="body-chart-panel">
+                <div class="body-view-label">Back</div>
+                <div class="body-chart-host" id="bodyMusclesBack"></div>
+              </div>
+            </div>
+          </div>
+          <aside class="muscle-breakdown-side">
+            <div class="muscle-scale">
+              <div class="muscle-scale-bar" aria-hidden="true"></div>
+              <div class="muscle-scale-labels">
+                <span>No focus</span>
+                <span>High focus</span>
+              </div>
+            </div>
+            <div class="muscle-breakdown-list" id="muscleBreakdownList"></div>
+          </aside>
+        </div>
+      </article>
+      </section>
+    </section>
   </main>
   <nav class="bottom-ribbon" aria-label="Dashboard tabs">
     <div class="bottom-ribbon-inner">
       <button class="tab-button is-active" id="summaryTabButton" type="button" data-tab="summary" aria-pressed="true">Summary</button>
       <button class="tab-button" id="repAnalyticsTabButton" type="button" data-tab="repAnalytics" aria-pressed="false">Rep Analytics</button>
+      <button class="tab-button" id="muscleBreakdownTabButton" type="button" data-tab="muscleBreakdown" aria-pressed="false">Muscle Breakdown</button>
     </div>
   </nav>
   <div class="chart-tooltip" id="chartTooltip"></div>
 
+  <script src="body-muscles.umd.min.js"></script>
   <script>
     let DATA = __DATA__;
     const PROJECT_PHOENIX_EXERCISE_MUSCLE_MAP = __MUSCLE_MAP__;
+    const REFINED_EXERCISE_BODY_MUSCLE_MAP = __REFINED_MUSCLE_MAP__;
 
     const palette = [
       "#2563eb", "#dc2626", "#0f766e", "#b45309", "#7c3aed",
@@ -1707,6 +2156,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       exerciseId: cachedSettings.exerciseId || ALL_EXERCISES_ID,
       loadBasis: cachedSettings.loadBasis === "perCable" ? "perCable" : "total",
       loadUnit: cachedSettings.loadUnit === "lbs" ? "lbs" : "kg",
+      theme: cachedSettings.theme === "dark" ? "dark" : "light",
       historyWindow: ["5", "10", "20", "all"].includes(cachedSettings.historyWindow) ? cachedSettings.historyWindow : "10",
       showLoadEchoMedian: Boolean(cachedSettings.showLoadEchoMedian),
       showLoadEchoAverage: Boolean(cachedSettings.showLoadEchoAverage),
@@ -1714,8 +2164,10 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       repTypeFilter: ["all", "echo", "nonEcho"].includes(cachedSettings.repTypeFilter) ? cachedSettings.repTypeFilter : "all",
       positionOverlayBasis: ["left", "right", "average"].includes(cachedSettings.positionOverlayBasis) ? cachedSettings.positionOverlayBasis : "average",
       ribbonCollapsed: Boolean(cachedSettings.ribbonCollapsed),
-      activeTab: ["summary", "repAnalytics"].includes(cachedSettings.activeTab) ? cachedSettings.activeTab : "summary",
+      activeTab: ["summary", "repAnalytics", "muscleBreakdown"].includes(cachedSettings.activeTab) ? cachedSettings.activeTab : "summary",
       filtersCollapsed: Boolean(cachedSettings.filtersCollapsed ?? cachedSettings.summaryFiltersCollapsed ?? cachedSettings.repAnalyticsFiltersCollapsed),
+      selectedBodyMuscleId: "",
+      expandedBodyMuscleId: "",
       dimmedOverlayDates: new Set(Array.isArray(cachedSettings.dimmedOverlayDates) ? cachedSettings.dimmedOverlayDates : [])
     };
 
@@ -1724,6 +2176,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         exerciseId: state.exerciseId,
         loadBasis: state.loadBasis,
         loadUnit: state.loadUnit,
+        theme: state.theme,
         historyWindow: state.historyWindow,
         showLoadEchoMedian: state.showLoadEchoMedian,
         showLoadEchoAverage: state.showLoadEchoAverage,
@@ -1753,31 +2206,45 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     const ribbonToggle = document.getElementById("ribbonToggle");
     const summaryTabPanel = document.getElementById("summaryTabPanel");
     const repAnalyticsTabPanel = document.getElementById("repAnalyticsTabPanel");
+    const muscleBreakdownTabPanel = document.getElementById("muscleBreakdownTabPanel");
     const summaryFilterPanel = document.getElementById("summaryFilterPanel");
     const summaryFilterToggle = document.getElementById("summaryFilterToggle");
     const repAnalyticsFilterPanel = document.getElementById("repAnalyticsFilterPanel");
     const repAnalyticsFilterToggle = document.getElementById("repAnalyticsFilterToggle");
+    const muscleBreakdownFilterPanel = document.getElementById("muscleBreakdownFilterPanel");
+    const muscleBreakdownFilterToggle = document.getElementById("muscleBreakdownFilterToggle");
     const summaryTabButton = document.getElementById("summaryTabButton");
     const repAnalyticsTabButton = document.getElementById("repAnalyticsTabButton");
+    const muscleBreakdownTabButton = document.getElementById("muscleBreakdownTabButton");
     const summaryExerciseSelect = document.getElementById("summaryExerciseSelect");
     const repExerciseSelect = document.getElementById("repExerciseSelect");
+    const muscleExerciseSelect = document.getElementById("muscleExerciseSelect");
     const backupFileInput = document.getElementById("backupFileInput");
     const summaryHistoryWindow = document.getElementById("summaryHistoryWindow");
     const repHistoryWindow = document.getElementById("repHistoryWindow");
+    const muscleHistoryWindow = document.getElementById("muscleHistoryWindow");
     const loadUnitToggle = document.getElementById("loadUnitToggle");
     const loadToggle = document.getElementById("loadToggle");
+    const themeToggle = document.getElementById("themeToggle");
     const loadEchoMedianToggle = document.getElementById("loadEchoMedianToggle");
     const loadEchoAverageToggle = document.getElementById("loadEchoAverageToggle");
     const repOverlayMode = document.getElementById("repOverlayMode");
     const repTypeFilter = document.getElementById("repTypeFilter");
     const positionOverlayBasis = document.getElementById("positionOverlayBasis");
+    const muscleBreakdownList = document.getElementById("muscleBreakdownList");
+    const bodyMusclesFront = document.getElementById("bodyMusclesFront");
+    const bodyMusclesBack = document.getElementById("bodyMusclesBack");
     const chartTooltip = document.getElementById("chartTooltip");
     const chartHitAreas = new Map();
     const exerciseMuscleLookup = buildExerciseMuscleLookup();
+    const refinedExerciseBodyMuscleLookup = buildRefinedExerciseBodyMuscleLookup();
     const mainContent = document.querySelector("main");
-    const exerciseSelects = [summaryExerciseSelect, repExerciseSelect];
-    const historyWindowSelects = [summaryHistoryWindow, repHistoryWindow];
+    const exerciseSelects = [summaryExerciseSelect, repExerciseSelect, muscleExerciseSelect];
+    const historyWindowSelects = [summaryHistoryWindow, repHistoryWindow, muscleHistoryWindow];
     let ribbonAutoCollapsePausedUntil = 0;
+    let frontBodyChart = null;
+    let backBodyChart = null;
+    let currentMuscleFocusItems = [];
 
     const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
 
@@ -1831,6 +2298,26 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         });
       });
       return lookup;
+    }
+
+    function buildRefinedExerciseBodyMuscleLookup() {
+      const byId = new Map();
+      const byName = new Map();
+      REFINED_EXERCISE_BODY_MUSCLE_MAP.forEach(entry => {
+        const bodyMuscles = (entry.bodyMuscles || [])
+          .map(item => ({ id: String(item.id || ""), weight: Number(item.weight) }))
+          .filter(item => item.id && Number.isFinite(item.weight) && item.weight > 0);
+        if (!bodyMuscles.length) return;
+        const normalizedEntry = { ...entry, bodyMuscles };
+        if (entry.id) byId.set(String(entry.id), normalizedEntry);
+        [entry.name, ...(entry.aliases || [])].forEach(name => {
+          const key = normalizeExerciseName(name);
+          if (key && !byName.has(key)) byName.set(key, normalizedEntry);
+          const singularKey = singularExerciseKey(name);
+          if (singularKey && !byName.has(singularKey)) byName.set(singularKey, normalizedEntry);
+        });
+      });
+      return { byId, byName };
     }
 
     function pad2(value) {
@@ -2394,6 +2881,277 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       return text === "-" ? "-" : `${text} J`;
     }
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function themeVar(name, fallback) {
+      return getComputedStyle(document.body).getPropertyValue(name).trim() || fallback;
+    }
+
+    function mutedColor() {
+      return themeVar("--muted", "#667085");
+    }
+
+    function lineColor() {
+      return themeVar("--line", "#d9dee7");
+    }
+
+    function gridColor() {
+      return themeVar("--grid-line", "#eef1f5");
+    }
+
+    function canvasColor() {
+      return themeVar("--canvas", "#ffffff");
+    }
+
+    function inactivePointColor() {
+      return themeVar("--inactive-point", "#c9d1dc");
+    }
+
+    function bodyRegionIdleColor() {
+      return themeVar("--body-region-idle", "#d4dae3");
+    }
+
+    function hexToRgb(hex) {
+      const clean = String(hex || "").replace("#", "").trim();
+      if (clean.length !== 6) return { r: 212, g: 218, b: 227 };
+      return {
+        r: parseInt(clean.slice(0, 2), 16),
+        g: parseInt(clean.slice(2, 4), 16),
+        b: parseInt(clean.slice(4, 6), 16)
+      };
+    }
+
+    function mixColor(startHex, endHex, amount) {
+      const start = hexToRgb(startHex);
+      const end = hexToRgb(endHex);
+      const mix = Math.max(0, Math.min(1, amount));
+      const channel = key => Math.round(start[key] + (end[key] - start[key]) * mix);
+      return `rgb(${channel("r")}, ${channel("g")}, ${channel("b")})`;
+    }
+
+    function muscleFocusColor(relative) {
+      const focus = Math.max(0, Math.min(1, Number(relative) || 0));
+      if (!focus) return bodyRegionIdleColor();
+      if (focus < 0.5) return mixColor("#fde68a", "#f97316", focus * 2);
+      return mixColor("#f97316", "#ef4444", (focus - 0.5) * 2);
+    }
+
+    function bodyMusclesLibrary() {
+      return window.BodyMuscles || null;
+    }
+
+    function bodyMuscleIdsForGroup(group) {
+      const library = bodyMusclesLibrary();
+      const groups = library?.MUSCLE_GROUPS || {};
+      if (group === "CHEST") return groups.Chest || [];
+      if (group === "SHOULDERS") return groups.Shoulders || [];
+      if (group === "ARMS") return groups.Arms || [];
+      if (group === "LEGS") return groups.Legs || [];
+      if (group === "BACK") return groups.Back || [];
+      if (group === "CORE") {
+        return [
+          ...(groups.Abdominals || []),
+          "spine",
+          "lower-back-erectors-left",
+          "lower-back-erectors-right",
+          "lower-back-ql-left",
+          "lower-back-ql-right"
+        ];
+      }
+      return [];
+    }
+
+    function fallbackBodyMusclesForExercise(exerciseName) {
+      return muscleGroupWeightsForExercise(exerciseName)
+        .flatMap(({ group, weight }) => {
+          const ids = bodyMuscleIdsForGroup(group);
+          if (!ids.length) return [];
+          return ids.map(id => ({ id, weight: weight / ids.length }));
+        });
+    }
+
+    function refinedBodyMusclesForExercise(exerciseId, exerciseName) {
+      const byId = refinedExerciseBodyMuscleLookup.byId.get(String(exerciseId || ""));
+      if (byId) return byId.bodyMuscles;
+      const key = normalizeExerciseName(exerciseName);
+      const byName = refinedExerciseBodyMuscleLookup.byName.get(key) ||
+        refinedExerciseBodyMuscleLookup.byName.get(singularExerciseKey(exerciseName));
+      if (byName) return byName.bodyMuscles;
+      return fallbackBodyMusclesForExercise(exerciseName);
+    }
+
+    function bodyMuscleNameLookup() {
+      const library = bodyMusclesLibrary();
+      const lookup = new Map();
+      (library?.MUSCLE_MAP || []).forEach(item => lookup.set(item.id, item.name));
+      return lookup;
+    }
+
+    function bodyMuscleFocusData(rows) {
+      const totals = new Map();
+      const exerciseSets = new Map();
+      const contributionRows = new Map();
+      const unmatched = new Set();
+
+      rows.forEach(row => {
+        const volume = Number(row.totalVolumeKg || 0);
+        if (!volume) return;
+        const bodyMuscles = refinedBodyMusclesForExercise(row.exerciseId, row.exerciseName);
+        if (!bodyMuscles.length) {
+          unmatched.add(row.exerciseName || "Unknown");
+          return;
+        }
+        bodyMuscles.forEach(({ id, weight }) => {
+          const amount = volume * Number(weight || 0);
+          if (!id || !Number.isFinite(amount) || amount <= 0) return;
+          totals.set(id, (totals.get(id) || 0) + amount);
+          if (!exerciseSets.has(id)) exerciseSets.set(id, new Set());
+          exerciseSets.get(id).add(row.exerciseName || "Unknown");
+          if (!contributionRows.has(id)) contributionRows.set(id, []);
+          contributionRows.get(id).push({
+            date: row.localDate || "",
+            label: row.label || row.localDate || "",
+            exerciseName: row.exerciseName || "Unknown",
+            sets: asInt(row.sets),
+            reps: asInt(row.workingReps),
+            workoutVolumeKg: volume,
+            allocatedVolumeKg: amount
+          });
+        });
+      });
+
+      const nameLookup = bodyMuscleNameLookup();
+      const total = [...totals.values()].reduce((sum, value) => sum + value, 0);
+      const maxValue = Math.max(...totals.values(), 0);
+      const items = [...totals.entries()]
+        .map(([id, value]) => ({
+          id,
+          label: nameLookup.get(id) || id,
+          value,
+          relative: maxValue ? value / maxValue : 0,
+          share: total ? value / total : 0,
+          exercises: [...(exerciseSets.get(id) || [])].sort(),
+          contributions: (contributionRows.get(id) || [])
+            .map(entry => ({
+              ...entry,
+              shareOfMuscle: value ? entry.allocatedVolumeKg / value : 0
+            }))
+            .sort((a, b) =>
+              b.allocatedVolumeKg - a.allocatedVolumeKg ||
+              String(b.date).localeCompare(String(a.date)) ||
+              a.exerciseName.localeCompare(b.exerciseName)
+            )
+        }))
+        .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
+      return { items, total, maxValue, unmatched: [...unmatched].sort() };
+    }
+
+    function bodyMuscleStateFromFocus(items) {
+      const bodyState = {};
+      items.forEach(item => {
+        if (!item.value) return;
+        const intensity = Math.max(1, Math.min(10, Math.round(item.relative * 10)));
+        bodyState[item.id] = { intensity, selected: item.id === state.selectedBodyMuscleId };
+      });
+      return bodyState;
+    }
+
+    function updateBodyMuscleChartSelection() {
+      if (!frontBodyChart || !backBodyChart) return;
+      const bodyState = bodyMuscleStateFromFocus(currentMuscleFocusItems);
+      frontBodyChart.update({ bodyState });
+      backBodyChart.update({ bodyState });
+    }
+
+    function applyMuscleListSelection({ scroll = false } = {}) {
+      document.querySelectorAll(".muscle-contribution-insert").forEach(panel => panel.remove());
+      document.querySelectorAll(".muscle-breakdown-row.is-selected")
+        .forEach(row => row.classList.remove("is-selected"));
+      document.querySelectorAll(".muscle-breakdown-toggle")
+        .forEach(toggle => { toggle.textContent = ""; });
+      if (!state.selectedBodyMuscleId) return;
+      const row = [...document.querySelectorAll(".muscle-breakdown-row")]
+        .find(item => item.dataset.muscleId === state.selectedBodyMuscleId);
+      if (!row) return;
+      row.classList.add("is-selected");
+      const toggle = row.querySelector(".muscle-breakdown-toggle");
+      if (toggle) toggle.textContent = state.expandedBodyMuscleId === state.selectedBodyMuscleId ? "-" : "+";
+      if (state.expandedBodyMuscleId === state.selectedBodyMuscleId) {
+        const item = currentMuscleFocusItems.find(entry => entry.id === state.selectedBodyMuscleId);
+        if (item) row.insertAdjacentHTML("afterend", renderMuscleContributionTable(item));
+      }
+      if (scroll) {
+        row.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      }
+    }
+
+    function selectBodyMuscle(muscleId, { scroll = true, collapseExpanded = true } = {}) {
+      state.selectedBodyMuscleId = String(muscleId || "");
+      if (collapseExpanded) state.expandedBodyMuscleId = "";
+      updateBodyMuscleChartSelection();
+      applyMuscleListSelection({ scroll });
+    }
+
+    function activateMuscleListRow(row) {
+      const muscleId = row?.dataset?.muscleId || "";
+      if (!muscleId) return;
+      if (state.selectedBodyMuscleId === muscleId) {
+        state.expandedBodyMuscleId = state.expandedBodyMuscleId === muscleId ? "" : muscleId;
+        updateBodyMuscleChartSelection();
+        applyMuscleListSelection();
+      } else {
+        selectBodyMuscle(muscleId, { scroll: false, collapseExpanded: true });
+      }
+    }
+
+    function clearBodyMuscleSelection() {
+      if (!state.selectedBodyMuscleId) return;
+      state.selectedBodyMuscleId = "";
+      state.expandedBodyMuscleId = "";
+      updateBodyMuscleChartSelection();
+      applyMuscleListSelection();
+    }
+
+    function isInsideMuscleBreakdownTarget(target) {
+      if (!(target instanceof Element)) return false;
+      return Boolean(
+        target.closest("#muscleBreakdownList") ||
+        target.closest("#bodyMusclesFront") ||
+        target.closest("#bodyMusclesBack")
+      );
+    }
+
+    function ensureBodyMuscleCharts() {
+      const library = bodyMusclesLibrary();
+      if (!library || !bodyMusclesFront || !bodyMusclesBack) return false;
+      if (!frontBodyChart) {
+        frontBodyChart = new library.BodyChart(bodyMusclesFront, {
+          view: library.ViewSide.FRONT,
+          bodyState: {},
+          ariaLabel: "Front muscle focus body map",
+          enableTransitions: true,
+          onMuscleClick: selectBodyMuscle
+        });
+      }
+      if (!backBodyChart) {
+        backBodyChart = new library.BodyChart(bodyMusclesBack, {
+          view: library.ViewSide.BACK,
+          bodyState: {},
+          ariaLabel: "Back muscle focus body map",
+          enableTransitions: true,
+          onMuscleClick: selectBodyMuscle
+        });
+      }
+      return true;
+    }
+
     function tooltipLoad(value, digits = 1) {
       return fmtLoad(value, digits);
     }
@@ -2450,6 +3208,16 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
           else hideChartTooltip();
         });
         canvas.addEventListener("mouseleave", hideChartTooltip);
+      });
+    }
+
+    function setupMuscleBreakdownTooltips() {
+      document.querySelectorAll(".body-region[data-muscle]").forEach(region => {
+        region.addEventListener("mousemove", event => {
+          const lines = (region.dataset.tooltip || titleCaseGroup(region.dataset.muscle)).split("|");
+          showChartTooltip(event, { lines });
+        });
+        region.addEventListener("mouseleave", hideChartTooltip);
       });
     }
 
@@ -2540,7 +3308,9 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         state.exerciseId = ALL_EXERCISES_ID;
         state.dimmedOverlayDates = new Set();
         populateExerciseSelect();
-        document.querySelector("label[for='backupFileInput'].file-button").textContent = file.name;
+        const fileButton = document.querySelector("label[for='backupFileInput'].file-button");
+        fileButton.textContent = file.name;
+        fileButton.title = file.name;
         saveDashboardCache();
         render();
       } catch (error) {
@@ -2573,26 +3343,34 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     function applyDashboardTabState() {
-      const showRepAnalytics = state.activeTab === "repAnalytics";
-      summaryTabPanel.classList.toggle("is-hidden", showRepAnalytics);
-      repAnalyticsTabPanel.classList.toggle("is-hidden", !showRepAnalytics);
-      summaryTabButton.classList.toggle("is-active", !showRepAnalytics);
-      repAnalyticsTabButton.classList.toggle("is-active", showRepAnalytics);
-      summaryTabButton.setAttribute("aria-pressed", String(!showRepAnalytics));
-      repAnalyticsTabButton.setAttribute("aria-pressed", String(showRepAnalytics));
+      [
+        ["summary", summaryTabPanel, summaryTabButton],
+        ["repAnalytics", repAnalyticsTabPanel, repAnalyticsTabButton],
+        ["muscleBreakdown", muscleBreakdownTabPanel, muscleBreakdownTabButton]
+      ].forEach(([tabKey, panel, button]) => {
+        const isActive = state.activeTab === tabKey;
+        panel.classList.toggle("is-hidden", !isActive);
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+      });
     }
 
     function applyFilterCollapseState() {
       const expanded = !state.filtersCollapsed;
       [
         [summaryFilterPanel, summaryFilterToggle],
-        [repAnalyticsFilterPanel, repAnalyticsFilterToggle]
+        [repAnalyticsFilterPanel, repAnalyticsFilterToggle],
+        [muscleBreakdownFilterPanel, muscleBreakdownFilterToggle]
       ].forEach(([panel, toggle]) => {
         panel.classList.toggle("is-collapsed", state.filtersCollapsed);
         toggle.setAttribute("aria-expanded", String(expanded));
         toggle.textContent = expanded ? "-" : "Filters +";
         toggle.title = expanded ? "Collapse filters" : "Expand filters";
       });
+    }
+
+    function applyTheme() {
+      document.body.classList.toggle("theme-dark", state.theme === "dark");
     }
 
     function toggleFiltersCollapsed() {
@@ -2606,6 +3384,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       syncHistoryWindowSelects();
       loadUnitToggle.checked = state.loadUnit === "lbs";
       loadToggle.checked = state.loadBasis === "total";
+      themeToggle.checked = state.theme === "dark";
       loadEchoMedianToggle.checked = state.showLoadEchoMedian;
       loadEchoAverageToggle.checked = state.showLoadEchoAverage;
       repOverlayMode.value = state.repOverlayMode;
@@ -2614,8 +3393,11 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       applyRibbonState();
       applyDashboardTabState();
       applyFilterCollapseState();
+      applyTheme();
       if (cachedDashboard?.data) {
-        document.querySelector("label[for='backupFileInput'].file-button").textContent = "Cached data";
+        const fileButton = document.querySelector("label[for='backupFileInput'].file-button");
+        fileButton.textContent = "Cached data";
+        fileButton.title = "Cached data";
       }
       ribbonToggle.addEventListener("click", () => {
         ribbonAutoCollapsePausedUntil = Date.now() + 450;
@@ -2629,9 +3411,30 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       repAnalyticsFilterToggle.addEventListener("click", () => {
         toggleFiltersCollapsed();
       });
+      muscleBreakdownFilterToggle.addEventListener("click", () => {
+        toggleFiltersCollapsed();
+      });
+      muscleBreakdownList.addEventListener("click", event => {
+        const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+        const row = target?.closest(".muscle-breakdown-row");
+        if (!row || !muscleBreakdownList.contains(row)) return;
+        activateMuscleListRow(row);
+      });
+      muscleBreakdownList.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const target = event.target instanceof Element ? event.target : null;
+        const row = target?.closest(".muscle-breakdown-row");
+        if (!row || !muscleBreakdownList.contains(row)) return;
+        event.preventDefault();
+        activateMuscleListRow(row);
+      });
+      document.addEventListener("click", event => {
+        if (isInsideMuscleBreakdownTarget(event.target)) return;
+        clearBodyMuscleSelection();
+      });
       mainContent.addEventListener("pointerdown", autoCollapseRibbon);
       window.addEventListener("scroll", autoCollapseRibbon, { passive: true });
-      [summaryTabButton, repAnalyticsTabButton].forEach(button => {
+      [summaryTabButton, repAnalyticsTabButton, muscleBreakdownTabButton].forEach(button => {
         button.addEventListener("click", () => {
           const nextTab = button.dataset.tab;
           if (state.activeTab === nextTab) return;
@@ -2669,6 +3472,12 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       });
       loadToggle.addEventListener("change", () => {
         state.loadBasis = loadToggle.checked ? "total" : "perCable";
+        saveDashboardCache();
+        render();
+      });
+      themeToggle.addEventListener("change", () => {
+        state.theme = themeToggle.checked ? "dark" : "light";
+        applyTheme();
         saveDashboardCache();
         render();
       });
@@ -2818,13 +3627,15 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       const ctx = canvas.getContext("2d");
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = canvasColor();
+      ctx.fillRect(0, 0, rect.width, rect.height);
       return { ctx, width: rect.width, height: rect.height };
     }
 
     function drawEmpty(canvas, text) {
       const { ctx, width, height } = canvasSetup(canvas);
       setChartHitAreas(canvas, []);
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.font = "14px Segoe UI, Arial";
       ctx.textAlign = "center";
       ctx.fillText(text, width / 2, height / 2);
@@ -2836,7 +3647,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     }
 
     function drawAxes(ctx, box, yTicks, yLabel) {
-      ctx.strokeStyle = "#d9dee7";
+      ctx.strokeStyle = lineColor();
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(box.left, box.top);
@@ -2844,12 +3655,12 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       ctx.lineTo(box.right, box.bottom);
       ctx.stroke();
 
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.font = "12px Segoe UI, Arial";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
       yTicks.forEach(tick => {
-        ctx.strokeStyle = "#eef1f5";
+        ctx.strokeStyle = gridColor();
         ctx.beginPath();
         ctx.moveTo(box.left, tick.y);
         ctx.lineTo(box.right, tick.y);
@@ -2901,7 +3712,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.font = "11px Segoe UI, Arial";
       const labelStep = Math.max(1, Math.ceil(rows.length / 6));
       rows.forEach((row, idx) => {
@@ -2962,7 +3773,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
           const color = series.color || palette[idx % palette.length];
           ctx.fillStyle = color;
           ctx.fillRect(x, height - 20, 12, 3);
-          ctx.fillStyle = "#667085";
+          ctx.fillStyle = mutedColor();
           ctx.fillText(series.name, x + 18, height - 18);
           x += ctx.measureText(series.name).width + 64;
         });
@@ -3037,7 +3848,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.font = "11px Segoe UI, Arial";
       const labelStep = Math.max(1, Math.ceil(rows.length / 6));
       rows.forEach((row, idx) => {
@@ -3047,11 +3858,11 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       ctx.textAlign = "left";
       ctx.fillStyle = "#2563eb";
       ctx.fillRect(box.left, height - 20, 12, 8);
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.fillText("Volume", box.left + 18, height - 22);
       ctx.fillStyle = "#dc2626";
       ctx.fillRect(box.left + 92, height - 17, 12, 3);
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.fillText("Est. 1RM", box.left + 110, height - 22);
       setChartHitAreas(canvas, hitItems);
     }
@@ -3072,13 +3883,39 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       return groups.map(group => ({ group, weight: 1 / groups.length }));
     }
 
+    function balanceGroupForBodyMuscle(id) {
+      if (/^chest-/.test(id)) return "CHEST";
+      if (/^(lats|traps|lower-back|nape|head-back)/.test(id)) return "BACK";
+      if (/^(shoulder|deltoid-rear)/.test(id)) return "SHOULDERS";
+      if (/^(biceps|triceps|forearm|elbow|hand)/.test(id)) return "ARMS";
+      if (/^(abs|obliques|serratus|spine)/.test(id)) return "CORE";
+      if (/^(quads|hamstrings|gluteus|adductors|calves|tibialis|knee|hip-flexor|foot)/.test(id)) return "LEGS";
+      return null;
+    }
+
+    function balanceGroupWeightsForExercise(exerciseId, exerciseName) {
+      const bodyMuscles = refinedBodyMusclesForExercise(exerciseId, exerciseName);
+      const groupWeights = new Map(MUSCLE_GROUP_ORDER.map(group => [group, 0]));
+      bodyMuscles.forEach(({ id, weight }) => {
+        const group = balanceGroupForBodyMuscle(id);
+        const value = Number(weight || 0);
+        if (!group || !Number.isFinite(value) || value <= 0) return;
+        groupWeights.set(group, groupWeights.get(group) + value);
+      });
+      const total = [...groupWeights.values()].reduce((sum, value) => sum + value, 0);
+      if (!total) return muscleGroupWeightsForExercise(exerciseName);
+      return MUSCLE_GROUP_ORDER
+        .map(group => ({ group, weight: groupWeights.get(group) / total }))
+        .filter(item => item.weight > 0);
+    }
+
     function muscleBalanceData(rows) {
       const groupTotals = new Map(MUSCLE_GROUP_ORDER.map(group => [group, 0]));
       const groupExercises = new Map(MUSCLE_GROUP_ORDER.map(group => [group, new Set()]));
       const unmatched = new Set();
 
       rows.forEach(row => {
-        const groupWeights = muscleGroupWeightsForExercise(row.exerciseName);
+        const groupWeights = balanceGroupWeightsForExercise(row.exerciseId, row.exerciseName);
         if (!groupWeights.length) {
           unmatched.add(row.exerciseName || "Unknown");
           return;
@@ -3129,7 +3966,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       const angleStep = (Math.PI * 2) / items.length;
       const hitItems = [];
 
-      ctx.strokeStyle = "#d9dee7";
+      ctx.strokeStyle = lineColor();
       ctx.lineWidth = 1;
       for (let ring = 1; ring <= 5; ring++) {
         ctx.beginPath();
@@ -3168,14 +4005,14 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         const angle = idx * angleStep - Math.PI / 2;
         const pointX = centerX + radius * item.relative * Math.cos(angle);
         const pointY = centerY + radius * item.relative * Math.sin(angle);
-        ctx.fillStyle = item.value > 0 ? "#2563eb" : "#c9d1dc";
+        ctx.fillStyle = item.value > 0 ? "#2563eb" : inactivePointColor();
         ctx.beginPath();
         ctx.arc(pointX, pointY, 4, 0, Math.PI * 2);
         ctx.fill();
 
         const labelX = centerX + labelRadius * Math.cos(angle);
         const labelY = centerY + labelRadius * Math.sin(angle);
-        ctx.fillStyle = "#475467";
+        ctx.fillStyle = mutedColor();
         ctx.textAlign = Math.cos(angle) > 0.25 ? "left" : (Math.cos(angle) < -0.25 ? "right" : "center");
         ctx.textBaseline = Math.sin(angle) > 0.4 ? "top" : (Math.sin(angle) < -0.4 ? "bottom" : "middle");
         ctx.fillText(item.label, labelX, labelY);
@@ -3203,13 +4040,87 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         ? ` ${balance.unmatched.length} unmatched: ${balance.unmatched.slice(0, 4).join(", ")}${balance.unmatched.length > 4 ? ", ..." : ""}.`
         : "";
       document.getElementById("muscleBalanceNote").textContent =
-        `Relative focus from Project Phoenix muscle groups; ${matchedCount} matched exercise${matchedCount === 1 ? "" : "s"}.${unmatchedText}`;
+        `Relative focus from refined body-region mappings rolled up to six muscle groups; ${matchedCount} matched exercise${matchedCount === 1 ? "" : "s"}.${unmatchedText}`;
       document.getElementById("muscleBalanceList").innerHTML = balance.items.map(item => `
         <div class="muscle-balance-item">
           <strong>${item.label}</strong>
           <span>${fmtNumber(item.share * 100, 0)}% share · ${fmtLoad(item.value, 0)}</span>
         </div>
       `).join("");
+    }
+
+    function renderMuscleContributionTable(item) {
+      const rows = item.contributions || [];
+      if (!rows.length) {
+        return `<div class="muscle-contribution-insert">No contributing workout rows.</div>`;
+      }
+      return `
+        <div class="muscle-contribution-insert">
+          <div class="muscle-contribution-inner">
+            <table class="muscle-contribution-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Exercise</th>
+                  <th>Sets</th>
+                  <th>Reps</th>
+                  <th>Volume</th>
+                  <th>Muscle Load</th>
+                  <th>Muscle %</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map(row => `
+                  <tr>
+                    <td>${escapeHtml(row.label || row.date)}</td>
+                    <td>${escapeHtml(row.exerciseName)}</td>
+                    <td>${fmtNumber(row.sets, 0)}</td>
+                    <td>${fmtNumber(row.reps, 0)}</td>
+                    <td>${fmtLoad(row.workoutVolumeKg, 0)}</td>
+                    <td>${fmtLoad(row.allocatedVolumeKg, 0)}</td>
+                    <td>${fmtNumber(row.shareOfMuscle * 100, 1)}%</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMuscleBreakdown(rows) {
+      const focus = bodyMuscleFocusData(rows);
+      currentMuscleFocusItems = focus.items;
+      if (state.selectedBodyMuscleId && !currentMuscleFocusItems.some(item => item.id === state.selectedBodyMuscleId)) {
+        state.selectedBodyMuscleId = "";
+        state.expandedBodyMuscleId = "";
+      }
+      const matchedCount = new Set(focus.items.flatMap(item => item.exercises)).size;
+      const unmatchedText = focus.unmatched.length
+        ? ` ${focus.unmatched.length} unmatched exercise${focus.unmatched.length === 1 ? "" : "s"} not shown.`
+        : "";
+
+      if (ensureBodyMuscleCharts()) {
+        const bodyState = bodyMuscleStateFromFocus(focus.items);
+        frontBodyChart.update({ bodyState });
+        backBodyChart.update({ bodyState });
+        document.getElementById("muscleBreakdownNote").textContent =
+          `Refined from ${REFINED_EXERCISE_BODY_MUSCLE_MAP.length} Project Phoenix exercises, Project Phoenix detailed muscles, free-exercise-db matches, and body-muscles anatomical regions; ${matchedCount} matched exercise${matchedCount === 1 ? "" : "s"}.${unmatchedText}`;
+      } else {
+        document.getElementById("muscleBreakdownNote").textContent =
+          "Body map library could not be loaded. Keep body-muscles.umd.min.js beside this HTML file.";
+      }
+
+      const listItems = focus.items.filter(item => item.value > 0);
+      document.getElementById("muscleBreakdownList").innerHTML = listItems.map(item => `
+        <div class="muscle-breakdown-row" role="button" tabindex="0" data-muscle-id="${escapeHtml(item.id)}">
+          <span class="swatch" style="background:${muscleFocusColor(item.relative)}"></span>
+          <strong>${escapeHtml(item.label)}</strong>
+          <span>${fmtNumber(item.share * 100, 0)}% &middot; ${fmtLoad(item.value, 0)}</span>
+          <span class="muscle-breakdown-toggle" aria-hidden="true"></span>
+        </div>
+      `).join("");
+      applyMuscleListSelection();
     }
 
     function traceWorkoutId(trace) {
@@ -3330,7 +4241,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
       const { ctx, width, height } = canvasSetup(canvas);
       const box = { left: 62, right: width - 22, top: 18, bottom: height - 52 };
-      const energyValues = traces.map(trace => trace.energyJ / 1000);
+      const energyValues = traces.map(trace => trace.energyJ);
       const yMax = Math.max(...energyValues, 1);
       const yScale = scaleLinear(0, yMax * 1.16, box.bottom, box.top);
       const xScale = traces.length === 1
@@ -3340,13 +4251,13 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       const barWidth = Math.max(2, Math.min(16, slotWidth * 0.72));
       const yTicks = [0, 0.25, 0.5, 0.75, 1].map(part => {
         const value = yMax * 1.16 * part;
-        return { y: yScale(value), label: fmtNumber(value, 1) };
+        return { y: yScale(value), label: fmtNumber(value, 0) };
       });
-      drawAxes(ctx, box, yTicks, "energy (kJ)");
+      drawAxes(ctx, box, yTicks, "energy (J)");
 
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.font = "11px Segoe UI, Arial";
       const labelStep = Math.max(1, Math.ceil(traces.length / 7));
       traces.forEach((trace, idx) => {
@@ -3360,8 +4271,8 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       const hitItems = [];
       traces.forEach((trace, idx) => {
         const x = xScale(idx);
-        const energyKj = trace.energyJ / 1000;
-        const y = yScale(energyKj);
+        const energyJ = trace.energyJ;
+        const y = yScale(energyJ);
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         ctx.fillStyle = `${color}${isOverlayDateDimmed(trace.date) ? "90" : "d8"}`;
         ctx.fillRect(x - barWidth / 2, y, barWidth, box.bottom - y);
@@ -3378,7 +4289,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
             `${trace.label || trace.date || "-"} ${traceTimeLabel(trace)}`,
             trace.exerciseName || "Working rep",
             `${traceModeKey(trace)} rep ${trace.repIndex || "-"}`,
-            `Energy: ${fmtEnergy(trace.energyJ, 1)}`
+            `Energy: ${fmtEnergyJ(trace.energyJ, 0)}`
           ]
         });
       });
@@ -3442,7 +4353,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.font = "12px Segoe UI, Arial";
       ctx.fillText("seconds from rep start", (box.left + box.right) / 2, height - 22);
 
@@ -3582,7 +4493,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.font = "12px Segoe UI, Arial";
       ctx.fillText("seconds from rep start", (box.left + box.right) / 2, height - 22);
 
@@ -3609,7 +4520,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
       ctx.moveTo(box.left, 16);
       ctx.lineTo(box.left + 22, 16);
       ctx.stroke();
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.fillText(positionLabel, box.left + 28, 16);
     }
 
@@ -3682,7 +4593,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
 
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillStyle = "#667085";
+      ctx.fillStyle = mutedColor();
       ctx.font = "11px Segoe UI, Arial";
       for (let idx = 0; idx <= 4; idx += 1) {
         const value = xMin + ((xMax - xMin) * idx / 4);
@@ -3848,6 +4759,7 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
         }]
       });
       renderMuscleBalance(rows);
+      renderMuscleBreakdown(rows);
       const overlayTraces = selectedOverlayTraces(rows);
       renderRepEnergyChart(rows, overlayTraces);
       renderRepOverlay(rows, overlayTraces);
@@ -3862,13 +4774,19 @@ def dashboard_html(data_json: str, muscle_map_json: str) -> str:
     });
     setupControls();
     setupChartTooltips();
+    setupMuscleBreakdownTooltips();
     render();
     saveDashboardCache();
   </script>
 </body>
 </html>
 """
-    return template.replace("__DATA__", data_json).replace("__MUSCLE_MAP__", muscle_map_json)
+    return (
+        template
+        .replace("__DATA__", data_json)
+        .replace("__MUSCLE_MAP__", muscle_map_json)
+        .replace("__REFINED_MUSCLE_MAP__", refined_muscle_map_json)
+    )
 
 
 def main() -> None:
@@ -3894,12 +4812,18 @@ def main() -> None:
         default="project_phoenix_exercise_muscle_map.json",
         help="Project Phoenix exercise-to-muscle-group mapping JSON.",
     )
+    parser.add_argument(
+        "--refined-muscle-map",
+        default="refined_exercise_body_muscle_map.json",
+        help="Exercise-to-body-muscles refined mapping JSON.",
+    )
     args = parser.parse_args()
 
     backup_path = Path(args.backup)
     output_path = Path(args.out)
     tables_dir = Path(args.tables_dir)
     exercise_map_path = Path(args.exercise_map)
+    refined_map_path = Path(args.refined_muscle_map)
 
     with backup_path.open("r", encoding="utf-8") as handle:
         raw_data = json.load(handle)
@@ -3908,6 +4832,11 @@ def main() -> None:
             exercise_muscle_map = json.load(handle)
     else:
         exercise_muscle_map = []
+    if refined_map_path.exists():
+        with refined_map_path.open("r", encoding="utf-8-sig") as handle:
+            refined_muscle_map = json.load(handle)
+    else:
+        refined_muscle_map = []
 
     dashboard = build_tables(raw_data)
 
@@ -3942,7 +4871,8 @@ def main() -> None:
 
     data_json = json.dumps(dashboard, separators=(",", ":"), ensure_ascii=False)
     muscle_map_json = json.dumps(exercise_muscle_map, separators=(",", ":"), ensure_ascii=False)
-    output_path.write_text(dashboard_html(data_json, muscle_map_json), encoding="utf-8")
+    refined_muscle_map_json = json.dumps(refined_muscle_map, separators=(",", ":"), ensure_ascii=False)
+    output_path.write_text(dashboard_html(data_json, muscle_map_json, refined_muscle_map_json), encoding="utf-8")
 
     print(f"Wrote {output_path.resolve()}")
     print(f"Wrote CSV tables to {tables_dir.resolve()}")

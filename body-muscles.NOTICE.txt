@@ -1,0 +1,6 @@
+body-muscles
+Source: https://vulovix.github.io/body-muscles/
+Package CDN: https://unpkg.com/body-muscles@1.0.0/dist/umd/body-muscles.umd.min.js
+License: Apache-2.0
+
+Used for the Vitruvian Training Dashboard muscle breakdown body map.
