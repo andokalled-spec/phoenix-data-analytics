@@ -2216,7 +2216,6 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
   </nav>
   <div class="chart-tooltip" id="chartTooltip"></div>
 
-  <script src="body-muscles.umd.min.js"></script>
   <script>
     let DATA = __DATA__;
     const PROJECT_PHOENIX_EXERCISE_MUSCLE_MAP = __MUSCLE_MAP__;
@@ -2241,41 +2240,74 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     };
     const KG_TO_LB = 2.2046226218;
     const GRAVITY_M_S2 = 9.80665;
-    const CACHE_KEY = "vitruvianTrainingDashboardCache:v1";
+    const LEGACY_CACHE_KEY = "vitruvianTrainingDashboardCache:v1";
+    const SETTINGS_CACHE_KEY = "vitruvianTrainingDashboardSettings:v2";
+    const DATA_CACHE_KEY = "vitruvianTrainingDashboardData:v2";
     const ALL_EXERCISES_ID = "__all_exercises__";
 
+    function validCachedDashboardData(data) {
+      if (!data?.workoutExerciseSummary || !Array.isArray(data.exercises)) return null;
+      const hasPositionChannels = !data.repTraces?.length ||
+        data.repTraces.some(trace => Array.isArray(trace.positionA) && Array.isArray(trace.positionB));
+      const hasEnergyFields = !data.repTraces?.length ||
+        data.repTraces.some(trace => Number.isFinite(Number(trace.totalEnergyJ)));
+      const hasSummaryEnergyFields = !data.workoutExerciseSummary.length ||
+        data.workoutExerciseSummary.every(row =>
+          Object.prototype.hasOwnProperty.call(row, "largestEchoRepEnergyJ") &&
+          Object.prototype.hasOwnProperty.call(row, "largestNonEchoRepEnergyJ")
+        );
+      const hasStopAtTopSegmentationFields = !data.repTraces?.length ||
+        data.repTraces.every(trace =>
+          Object.prototype.hasOwnProperty.call(trace, "stopAtTop") &&
+          Object.prototype.hasOwnProperty.call(trace, "isFinalRep")
+        );
+      return hasPositionChannels && hasEnergyFields && hasSummaryEnergyFields && hasStopAtTopSegmentationFields
+        ? data
+        : null;
+    }
+
     function loadCachedDashboard() {
+      let settings = {};
       try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (!parsed?.data?.workoutExerciseSummary || !Array.isArray(parsed.data.exercises)) return null;
-        const hasPositionChannels = !parsed.data.repTraces?.length ||
-          parsed.data.repTraces.some(trace => Array.isArray(trace.positionA) && Array.isArray(trace.positionB));
-        const hasEnergyFields = !parsed.data.repTraces?.length ||
-          parsed.data.repTraces.some(trace => Number.isFinite(Number(trace.totalEnergyJ)));
-        const hasSummaryEnergyFields = !parsed.data.workoutExerciseSummary.length ||
-          parsed.data.workoutExerciseSummary.every(row =>
-            Object.prototype.hasOwnProperty.call(row, "largestEchoRepEnergyJ") &&
-            Object.prototype.hasOwnProperty.call(row, "largestNonEchoRepEnergyJ")
-          );
-        const hasStopAtTopSegmentationFields = !parsed.data.repTraces?.length ||
-          parsed.data.repTraces.every(trace =>
-            Object.prototype.hasOwnProperty.call(trace, "stopAtTop") &&
-            Object.prototype.hasOwnProperty.call(trace, "isFinalRep")
-          );
-        if (!hasPositionChannels || !hasEnergyFields || !hasSummaryEnergyFields || !hasStopAtTopSegmentationFields) {
-          return { settings: parsed.settings || {} };
+        const settingsRaw = localStorage.getItem(SETTINGS_CACHE_KEY);
+        if (settingsRaw) {
+          const parsedSettings = JSON.parse(settingsRaw) || {};
+          settings = parsedSettings.settings || parsedSettings;
         }
-        return parsed;
       } catch (error) {
-        return null;
+        settings = {};
+      }
+
+      try {
+        const dataRaw = localStorage.getItem(DATA_CACHE_KEY);
+        const data = dataRaw ? validCachedDashboardData(JSON.parse(dataRaw)?.data) : null;
+        if (data) return { data, settings };
+      } catch (error) {
+        // Fall through to legacy cache migration below.
+      }
+
+      try {
+        const legacyRaw = localStorage.getItem(LEGACY_CACHE_KEY);
+        if (!legacyRaw) return { settings };
+        const legacy = JSON.parse(legacyRaw);
+        const legacySettings = legacy?.settings || {};
+        const data = validCachedDashboardData(legacy?.data);
+        return {
+          data,
+          settings: { ...legacySettings, ...settings },
+          migratedFromLegacy: Boolean(data),
+          clearLegacyCache: !data
+        };
+      } catch (error) {
+        return { settings };
       }
     }
 
     const cachedDashboard = loadCachedDashboard();
     if (cachedDashboard?.data) DATA = cachedDashboard.data;
     const cachedSettings = cachedDashboard?.settings || {};
+    const shouldMigrateLegacyDashboardCache = Boolean(cachedDashboard?.migratedFromLegacy);
+    const shouldClearLegacyDashboardCache = Boolean(cachedDashboard?.clearLegacyCache);
 
     const state = {
       exerciseId: cachedSettings.exerciseId || ALL_EXERCISES_ID,
@@ -2315,15 +2347,24 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       };
     }
 
-    function saveDashboardCache() {
+    function saveDashboardCache({ includeData = false } = {}) {
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-          data: DATA,
+        localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({
           settings: dashboardCacheSettings(),
           savedAt: new Date().toISOString()
         }));
       } catch (error) {
-        console.warn("Dashboard cache could not be saved", error);
+        console.warn("Dashboard settings cache could not be saved", error);
+      }
+      if (!includeData) return;
+      try {
+        localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({
+          data: DATA,
+          savedAt: new Date().toISOString()
+        }));
+        localStorage.removeItem(LEGACY_CACHE_KEY);
+      } catch (error) {
+        console.warn("Dashboard data cache could not be saved", error);
       }
     }
 
@@ -2361,6 +2402,8 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     const bodyMusclesBack = document.getElementById("bodyMusclesBack");
     const chartTooltip = document.getElementById("chartTooltip");
     const chartHitAreas = new Map();
+    const repAnalyticsChartMeta = new Map();
+    const repAnalyticsLazyRenderers = new Map();
     const repAnalyticsBaseImages = new Map();
     const repAnalyticsCanvasIds = [
       "repOverlay",
@@ -2371,8 +2414,8 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       "eccentricVelocityPositionChart",
       "repEnergyChart"
     ];
-    const exerciseMuscleLookup = buildExerciseMuscleLookup();
-    const refinedExerciseBodyMuscleLookup = buildRefinedExerciseBodyMuscleLookup();
+    let exerciseMuscleLookup = null;
+    let refinedExerciseBodyMuscleLookup = null;
     const mainContent = document.querySelector("main");
     const exerciseSelects = [summaryExerciseSelect, repExerciseSelect, muscleExerciseSelect];
     const historyWindowSelects = [summaryHistoryWindow, repHistoryWindow, muscleHistoryWindow];
@@ -2384,6 +2427,11 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     let currentRepAnalyticsOverlayTraces = [];
     let activeRepAnalyticsItem = null;
     let resizeRenderTimer = 0;
+    let dashboardDataVersion = 0;
+    let rowsContextCache = null;
+    let overlayTracesCache = null;
+    let bodyMusclesScriptPromise = null;
+    let repAnalyticsObserver = null;
 
     const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
 
@@ -2445,6 +2493,13 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       return lookup;
     }
 
+    function getExerciseMuscleLookup() {
+      if (!exerciseMuscleLookup) {
+        exerciseMuscleLookup = buildExerciseMuscleLookup();
+      }
+      return exerciseMuscleLookup;
+    }
+
     function buildRefinedExerciseBodyMuscleLookup() {
       const byId = new Map();
       const byName = new Map();
@@ -2463,6 +2518,13 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         });
       });
       return { byId, byName };
+    }
+
+    function getRefinedExerciseBodyMuscleLookup() {
+      if (!refinedExerciseBodyMuscleLookup) {
+        refinedExerciseBodyMuscleLookup = buildRefinedExerciseBodyMuscleLookup();
+      }
+      return refinedExerciseBodyMuscleLookup;
     }
 
     function pad2(value) {
@@ -3186,6 +3248,25 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       return window.BodyMuscles || null;
     }
 
+    function loadBodyMusclesLibrary() {
+      const existing = bodyMusclesLibrary();
+      if (existing) return Promise.resolve(existing);
+      if (bodyMusclesScriptPromise) return bodyMusclesScriptPromise;
+      bodyMusclesScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "body-muscles.umd.min.js";
+        script.async = true;
+        script.onload = () => {
+          const library = bodyMusclesLibrary();
+          if (library) resolve(library);
+          else reject(new Error("Body map library did not initialize."));
+        };
+        script.onerror = () => reject(new Error("Body map library could not be loaded."));
+        document.head.appendChild(script);
+      });
+      return bodyMusclesScriptPromise;
+    }
+
     function bodyMuscleIdsForGroup(group) {
       const library = bodyMusclesLibrary();
       const groups = library?.MUSCLE_GROUPS || {};
@@ -3217,11 +3298,12 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     function refinedBodyMusclesForExercise(exerciseId, exerciseName) {
-      const byId = refinedExerciseBodyMuscleLookup.byId.get(String(exerciseId || ""));
+      const lookup = getRefinedExerciseBodyMuscleLookup();
+      const byId = lookup.byId.get(String(exerciseId || ""));
       if (byId) return byId.bodyMuscles;
       const key = normalizeExerciseName(exerciseName);
-      const byName = refinedExerciseBodyMuscleLookup.byName.get(key) ||
-        refinedExerciseBodyMuscleLookup.byName.get(singularExerciseKey(exerciseName));
+      const byName = lookup.byName.get(key) ||
+        lookup.byName.get(singularExerciseKey(exerciseName));
       if (byName) return byName.bodyMuscles;
       return fallbackBodyMusclesForExercise(exerciseName);
     }
@@ -3420,6 +3502,19 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       return canvas && repAnalyticsCanvasIds.includes(canvas.id);
     }
 
+    function setRepAnalyticsChartMeta(canvas, meta) {
+      if (!isRepAnalyticsCanvas(canvas)) return;
+      repAnalyticsChartMeta.set(canvas.id, meta);
+      setChartHitAreas(canvas, []);
+    }
+
+    function clearRepAnalyticsCanvasState(canvas) {
+      if (!isRepAnalyticsCanvas(canvas)) return;
+      repAnalyticsChartMeta.delete(canvas.id);
+      repAnalyticsBaseImages.delete(canvas.id);
+      setChartHitAreas(canvas, []);
+    }
+
     function cacheRepAnalyticsCanvasBase(canvas) {
       if (!isRepAnalyticsCanvas(canvas)) return;
       try {
@@ -3463,6 +3558,132 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         }
         if (!best || score < best.score) best = { item, score };
       });
+      return best && best.score <= maxDistance ? best.item : null;
+    }
+
+    function repAnalyticsTraceColor(trace, dateColors) {
+      return isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
+    }
+
+    function repAnalyticsScore(item, mouseX, mouseY) {
+      if (item.bounds) {
+        const inside = mouseX >= item.bounds.left && mouseX <= item.bounds.right && mouseY >= item.bounds.top && mouseY <= item.bounds.bottom;
+        if (inside) return 0;
+      }
+      return Math.hypot(mouseX - item.x, mouseY - item.y);
+    }
+
+    function repAnalyticsItem(canvasId, trace, sampleIndex, x, y, color, metric, bounds = null, phase = null) {
+      const boundedIndex = Math.max(0, Math.min((trace.timeSec?.length || 1) - 1, Number(sampleIndex) || 0));
+      return {
+        key: repAnalyticsPointKey(canvasId, trace, boundedIndex, metric),
+        traceKey: repAnalyticsTraceKey(trace),
+        sampleIndex: boundedIndex,
+        phase: phase || traceSamplePhase(trace, boundedIndex),
+        color,
+        x,
+        y,
+        bounds,
+        lines: repAnalyticsTraceLines(trace, boundedIndex)
+      };
+    }
+
+    function timeMetaItem(canvasId, meta, trace, sampleIndex) {
+      const idx = Math.max(0, Math.min((trace.timeSec?.length || 1) - 1, Number(sampleIndex) || 0));
+      const time = Number(trace.timeSec?.[idx]);
+      if (!Number.isFinite(time)) return null;
+      const values = meta.valueKind === "position"
+        ? tracePositionValues(trace, meta.field)
+        : Array.isArray(trace[meta.field])
+          ? trace[meta.field]
+          : [];
+      const rawValue = values[idx];
+      const value = meta.valueKind === "load" ? displayLoadValue(rawValue) : Number(rawValue);
+      if (!Number.isFinite(value)) return null;
+      return repAnalyticsItem(
+        canvasId,
+        trace,
+        idx,
+        meta.xScale(time),
+        meta.yScale(value),
+        repAnalyticsTraceColor(trace, meta.dateColors),
+        meta.metric
+      );
+    }
+
+    function energyMetaItem(canvasId, meta, trace, traceIndex) {
+      const energyJ = Number(trace.energyJ);
+      if (!Number.isFinite(energyJ)) return null;
+      const sampleIndex = representativeTraceSampleIndex(trace);
+      const x = meta.xScale(traceIndex);
+      const y = meta.yScale(energyJ);
+      const bounds = {
+        left: x - meta.barWidth / 2,
+        right: x + meta.barWidth / 2,
+        top: y,
+        bottom: meta.box.bottom
+      };
+      return repAnalyticsItem(
+        canvasId,
+        trace,
+        sampleIndex,
+        x,
+        y,
+        repAnalyticsTraceColor(trace, meta.dateColors),
+        "energy",
+        bounds
+      );
+    }
+
+    function phaseMetaItem(canvasId, meta, segment, point) {
+      const trace = segment.trace;
+      return repAnalyticsItem(
+        canvasId,
+        trace,
+        point.idx,
+        meta.xScale(point.p),
+        meta.yScale(point.value),
+        repAnalyticsTraceColor(trace, meta.dateColors),
+        `${meta.metric}-${meta.phase}`,
+        null,
+        meta.phase
+      );
+    }
+
+    function nearestRepAnalyticsItem(canvas, mouseX, mouseY, maxDistance = 80) {
+      const meta = repAnalyticsChartMeta.get(canvas.id);
+      if (!meta) return null;
+      let best = null;
+      const consider = item => {
+        if (!item) return;
+        const score = repAnalyticsScore(item, mouseX, mouseY);
+        if (!best || score < best.score) best = { item, score };
+      };
+
+      if (meta.kind === "energy") {
+        meta.traces.forEach((trace, idx) => {
+          if (!traceCanBeInspected(trace)) return;
+          consider(energyMetaItem(canvas.id, meta, trace, idx));
+        });
+      } else if (meta.kind === "time") {
+        meta.traces.forEach(trace => {
+          if (!traceCanBeInspected(trace)) return;
+          const count = Math.min(trace.timeSec?.length || 0, meta.valueKind === "position"
+            ? tracePositionValues(trace, meta.field).length
+            : (trace[meta.field]?.length || 0));
+          for (let idx = 0; idx < count; idx += 1) {
+            consider(timeMetaItem(canvas.id, meta, trace, idx));
+          }
+        });
+      } else if (meta.kind === "phase") {
+        meta.segments.forEach(segment => {
+          const trace = segment.trace;
+          if (!traceCanBeInspected(trace)) return;
+          meta.pointsForSegment(segment).forEach(point => {
+            consider(phaseMetaItem(canvas.id, meta, segment, point));
+          });
+        });
+      }
       return best && best.score <= maxDistance ? best.item : null;
     }
 
@@ -3597,23 +3818,36 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       if (!activeRepAnalyticsItem) return null;
       const canvasPhase = repAnalyticsCanvasPhase(canvas.id);
       if (canvasPhase && activeRepAnalyticsItem.phase !== canvasPhase) return null;
-      const items = chartHitAreas.get(canvas.id) || [];
-      if (!items.length) return null;
-      if (canvas.id === "repEnergyChart") {
-        return items.find(candidate => candidate.traceKey === activeRepAnalyticsItem.traceKey) || null;
+      const meta = repAnalyticsChartMeta.get(canvas.id);
+      if (!meta) return null;
+
+      if (meta.kind === "energy") {
+        const traceIndex = meta.traces.findIndex(trace => repAnalyticsTraceKey(trace) === activeRepAnalyticsItem.traceKey);
+        return traceIndex >= 0 ? energyMetaItem(canvas.id, meta, meta.traces[traceIndex], traceIndex) : null;
       }
-      const exact = items.find(candidate =>
-        candidate.traceKey === activeRepAnalyticsItem.traceKey &&
-        candidate.sampleIndex === activeRepAnalyticsItem.sampleIndex
-      );
-      if (exact) return exact;
-      const sameTrace = items.filter(candidate => candidate.traceKey === activeRepAnalyticsItem.traceKey);
-      if (!sameTrace.length) return null;
-      return sameTrace.reduce((best, candidate) => {
-        const distance = Math.abs(Number(candidate.sampleIndex || 0) - Number(activeRepAnalyticsItem.sampleIndex || 0));
-        const bestDistance = Math.abs(Number(best.sampleIndex || 0) - Number(activeRepAnalyticsItem.sampleIndex || 0));
-        return distance < bestDistance ? candidate : best;
-      }, sameTrace[0]);
+
+      if (meta.kind === "time") {
+        const trace = meta.traces.find(candidate => repAnalyticsTraceKey(candidate) === activeRepAnalyticsItem.traceKey);
+        return trace ? timeMetaItem(canvas.id, meta, trace, activeRepAnalyticsItem.sampleIndex) : null;
+      }
+
+      if (meta.kind === "phase") {
+        const sameTraceSegments = meta.segments.filter(segment =>
+          repAnalyticsTraceKey(segment.trace) === activeRepAnalyticsItem.traceKey
+        );
+        if (!sameTraceSegments.length) return null;
+        let best = null;
+        sameTraceSegments.forEach(segment => {
+          meta.pointsForSegment(segment).forEach(point => {
+            const item = phaseMetaItem(canvas.id, meta, segment, point);
+            const distance = Math.abs(Number(item.sampleIndex || 0) - Number(activeRepAnalyticsItem.sampleIndex || 0));
+            if (!best || distance < best.distance) best = { item, distance };
+          });
+        });
+        return best?.item || null;
+      }
+
+      return null;
     }
 
     function drawActiveRepAnalyticsSelection(canvas) {
@@ -3633,7 +3867,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     function updateRepAnalyticsInspector(canvas, event) {
       if (state.activeTab !== "repAnalytics") return false;
       const rect = canvas.getBoundingClientRect();
-      const item = nearestChartItem(canvas, event.clientX - rect.left, event.clientY - rect.top, 80);
+      const item = nearestRepAnalyticsItem(canvas, event.clientX - rect.left, event.clientY - rect.top, 80);
       if (!item) return false;
       activeRepAnalyticsItem = { ...item, canvasId: canvas.id };
       refreshRepAnalyticsSelections();
@@ -3657,7 +3891,9 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         if (!canvas) return;
         canvas.addEventListener("mousemove", event => {
           const rect = canvas.getBoundingClientRect();
-          const item = nearestChartItem(canvas, event.clientX - rect.left, event.clientY - rect.top);
+          const item = isRepAnalyticsCanvas(canvas)
+            ? nearestRepAnalyticsItem(canvas, event.clientX - rect.left, event.clientY - rect.top, 36)
+            : nearestChartItem(canvas, event.clientX - rect.left, event.clientY - rect.top);
           if (item) showChartTooltip(event, item);
           else hideChartTooltip();
         });
@@ -3667,6 +3903,8 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
     function setupMuscleBreakdownTooltips() {
       document.querySelectorAll(".body-region[data-muscle]").forEach(region => {
+        if (region.dataset.tooltipReady === "true") return;
+        region.dataset.tooltipReady = "true";
         region.addEventListener("mousemove", event => {
           const lines = (region.dataset.tooltip || titleCaseGroup(region.dataset.muscle)).split("|");
           showChartTooltip(event, { lines });
@@ -3775,14 +4013,18 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         const raw = JSON.parse(text);
         const nextData = buildDashboardData(raw);
         DATA = nextData;
+        dashboardDataVersion += 1;
+        rowsContextCache = null;
+        overlayTracesCache = null;
+        activeRepAnalyticsItem = null;
         state.exerciseId = ALL_EXERCISES_ID;
         state.dimmedOverlayDates = new Set();
         populateExerciseSelect();
         const fileButton = document.querySelector("label[for='backupFileInput'].file-button");
         fileButton.textContent = file.name;
         fileButton.title = file.name;
-        saveDashboardCache();
         render();
+        window.setTimeout(() => saveDashboardCache({ includeData: true }), 0);
       } catch (error) {
         sourceMeta.textContent = `Could not load ${file.name}: ${error.message}`;
       } finally {
@@ -3978,75 +4220,103 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       });
     }
 
-    function allRowsForExercise() {
-      return DATA.workoutExerciseSummary
+    function rowsContextKey() {
+      return [
+        dashboardDataVersion,
+        state.exerciseId,
+        state.historyWindow,
+        DATA.metadata?.exportedAt || "",
+        DATA.workoutExerciseSummary?.length || 0,
+        DATA.repTraces?.length || 0
+      ].join("::");
+    }
+
+    function buildRowsContext() {
+      const allRows = DATA.workoutExerciseSummary
         .filter(row => isAllExercises() || row.exerciseId === state.exerciseId)
         .sort((a, b) => a.timestamp - b.timestamp || String(a.exerciseName).localeCompare(String(b.exerciseName)));
+      const rows = state.historyWindow === "all" ? allRows : allRows.slice(-Number(state.historyWindow));
+      let repsRows = rows;
+      let volumeRows = rows;
+
+      if (isAllExercises()) {
+        const workoutRows = new Map();
+        allRows.forEach(row => {
+          const key = row.workoutId || `${row.localDate || ""}::${row.routineName || ""}::${row.timestamp || ""}`;
+          if (!workoutRows.has(key)) {
+            workoutRows.set(key, {
+              workoutId: row.workoutId,
+              timestamp: row.timestamp,
+              localDate: row.localDate,
+              label: row.label || row.localDate,
+              routineName: row.routineName,
+              exerciseName: "All Exercises",
+              workingReps: 0,
+              isAggregateTotal: true
+            });
+          }
+          const workout = workoutRows.get(key);
+          workout.timestamp = Math.min(workout.timestamp, row.timestamp);
+          workout.workingReps += Number(row.workingReps || 0);
+        });
+        repsRows = [...workoutRows.values()].sort((a, b) => a.timestamp - b.timestamp);
+        if (state.historyWindow !== "all") repsRows = repsRows.slice(-Number(state.historyWindow));
+
+        const dailyRows = new Map();
+        allRows.forEach(row => {
+          const key = row.localDate || row.label || "";
+          if (!dailyRows.has(key)) {
+            dailyRows.set(key, {
+              timestamp: row.timestamp,
+              localDate: row.localDate,
+              label: row.localDate,
+              exerciseName: "All Exercises",
+              totalVolumeKg: 0,
+              estimatedOneRepMaxKg: null,
+              isDailyTotal: true
+            });
+          }
+          const daily = dailyRows.get(key);
+          const estimatedOneRepMax = Number(row.estimatedOneRepMaxKg || 0);
+          daily.timestamp = Math.min(daily.timestamp, row.timestamp);
+          daily.totalVolumeKg += Number(row.totalVolumeKg || 0);
+          daily.estimatedOneRepMaxKg = Math.max(Number(daily.estimatedOneRepMaxKg || 0), estimatedOneRepMax) || null;
+        });
+        volumeRows = [...dailyRows.values()]
+          .map(row => ({
+            ...row,
+            totalVolumeKg: Math.round(row.totalVolumeKg * 100) / 100,
+            estimatedOneRepMaxKg: row.estimatedOneRepMaxKg === null ? null : Math.round(row.estimatedOneRepMaxKg * 100) / 100
+          }))
+          .sort((a, b) => a.timestamp - b.timestamp);
+        if (state.historyWindow !== "all") volumeRows = volumeRows.slice(-Number(state.historyWindow));
+      }
+
+      return { allRows, rows, repsRows, volumeRows };
+    }
+
+    function rowsContext() {
+      const key = rowsContextKey();
+      if (!rowsContextCache || rowsContextCache.key !== key) {
+        rowsContextCache = { key, ...buildRowsContext() };
+      }
+      return rowsContextCache;
+    }
+
+    function allRowsForExercise() {
+      return rowsContext().allRows;
     }
 
     function rowsForExercise() {
-      const rows = allRowsForExercise();
-      if (state.historyWindow === "all") return rows;
-      return rows.slice(-Number(state.historyWindow));
+      return rowsContext().rows;
     }
 
     function rowsForRepsChart() {
-      if (!isAllExercises()) return rowsForExercise();
-      const workoutRows = new Map();
-      allRowsForExercise().forEach(row => {
-        const key = row.workoutId || `${row.localDate || ""}::${row.routineName || ""}::${row.timestamp || ""}`;
-        if (!workoutRows.has(key)) {
-          workoutRows.set(key, {
-            workoutId: row.workoutId,
-            timestamp: row.timestamp,
-            localDate: row.localDate,
-            label: row.label || row.localDate,
-            routineName: row.routineName,
-            exerciseName: "All Exercises",
-            workingReps: 0,
-            isAggregateTotal: true
-          });
-        }
-        const workout = workoutRows.get(key);
-        workout.timestamp = Math.min(workout.timestamp, row.timestamp);
-        workout.workingReps += Number(row.workingReps || 0);
-      });
-      const rows = [...workoutRows.values()].sort((a, b) => a.timestamp - b.timestamp);
-      if (state.historyWindow === "all") return rows;
-      return rows.slice(-Number(state.historyWindow));
+      return rowsContext().repsRows;
     }
 
     function rowsForVolumeChart() {
-      if (!isAllExercises()) return rowsForExercise();
-      const dailyRows = new Map();
-      allRowsForExercise().forEach(row => {
-        const key = row.localDate || row.label || "";
-        if (!dailyRows.has(key)) {
-          dailyRows.set(key, {
-            timestamp: row.timestamp,
-            localDate: row.localDate,
-            label: row.localDate,
-            exerciseName: "All Exercises",
-            totalVolumeKg: 0,
-            estimatedOneRepMaxKg: null,
-            isDailyTotal: true
-          });
-        }
-        const daily = dailyRows.get(key);
-        const estimatedOneRepMax = Number(row.estimatedOneRepMaxKg || 0);
-        daily.timestamp = Math.min(daily.timestamp, row.timestamp);
-        daily.totalVolumeKg += Number(row.totalVolumeKg || 0);
-        daily.estimatedOneRepMaxKg = Math.max(Number(daily.estimatedOneRepMaxKg || 0), estimatedOneRepMax) || null;
-      });
-      const rows = [...dailyRows.values()]
-        .map(row => ({
-          ...row,
-          totalVolumeKg: Math.round(row.totalVolumeKg * 100) / 100,
-          estimatedOneRepMaxKg: row.estimatedOneRepMaxKg === null ? null : Math.round(row.estimatedOneRepMaxKg * 100) / 100
-        }))
-        .sort((a, b) => a.timestamp - b.timestamp);
-      if (state.historyWindow === "all") return rows;
-      return rows.slice(-Number(state.historyWindow));
+      return rowsContext().volumeRows;
     }
 
     function exerciseInfo() {
@@ -4090,7 +4360,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     function canvasSetup(canvas) {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
       const rect = canvas.getBoundingClientRect();
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
       canvas.height = Math.max(1, Math.floor(rect.height * dpr));
@@ -4105,6 +4375,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     function drawEmpty(canvas, text) {
       const { ctx, width, height } = canvasSetup(canvas);
       setChartHitAreas(canvas, []);
+      if (isRepAnalyticsCanvas(canvas)) repAnalyticsChartMeta.delete(canvas.id);
       ctx.fillStyle = mutedColor();
       ctx.font = "14px Segoe UI, Arial";
       ctx.textAlign = "center";
@@ -4339,10 +4610,11 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     function muscleGroupsForExercise(exerciseName) {
+      const lookup = getExerciseMuscleLookup();
       const key = normalizeExerciseName(exerciseName);
-      if (exerciseMuscleLookup.has(key)) return exerciseMuscleLookup.get(key);
+      if (lookup.has(key)) return lookup.get(key);
       const singularKey = singularExerciseKey(exerciseName);
-      return exerciseMuscleLookup.get(singularKey) || [];
+      return lookup.get(singularKey) || [];
     }
 
     function muscleGroupWeightsForExercise(exerciseName) {
@@ -4560,6 +4832,19 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     function renderMuscleBreakdown(rows) {
+      if (!bodyMusclesLibrary()) {
+        document.getElementById("muscleBreakdownNote").textContent = "Loading body map...";
+        document.getElementById("muscleBreakdownList").innerHTML = "";
+        loadBodyMusclesLibrary()
+          .then(() => {
+            if (state.activeTab === "muscleBreakdown") renderMuscleBreakdown(rowsForExercise());
+          })
+          .catch(() => {
+            document.getElementById("muscleBreakdownNote").textContent =
+              "Body map library could not be loaded. Keep body-muscles.umd.min.js beside this HTML file.";
+          });
+        return;
+      }
       const focus = bodyMuscleFocusData(rows);
       currentMuscleFocusItems = focus.items;
       if (state.selectedBodyMuscleId && !currentMuscleFocusItems.some(item => item.id === state.selectedBodyMuscleId)) {
@@ -4575,6 +4860,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         const bodyState = bodyMuscleStateFromFocus(focus.items);
         frontBodyChart.update({ bodyState });
         backBodyChart.update({ bodyState });
+        setupMuscleBreakdownTooltips();
         document.getElementById("muscleBreakdownNote").textContent =
           `Refined from ${REFINED_EXERCISE_BODY_MUSCLE_MAP.length} Project Phoenix exercises, Project Phoenix detailed muscles, free-exercise-db matches, and body-muscles anatomical regions; ${matchedCount} matched exercise${matchedCount === 1 ? "" : "s"}.${unmatchedText}`;
       } else {
@@ -4681,6 +4967,17 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     function selectedOverlayTraces(activeRows) {
+      const rowKey = activeRows.map(row => `${row.workoutId}::${row.exerciseId}`).join("|");
+      const cacheKey = [
+        dashboardDataVersion,
+        state.exerciseId,
+        state.historyWindow,
+        state.repTypeFilter,
+        state.repOverlayMode,
+        state.loadBasis,
+        rowKey
+      ].join("::");
+      if (overlayTracesCache?.key === cacheKey) return overlayTracesCache.traces;
       const activeWorkoutExerciseKeys = new Set(activeRows.map(row => `${row.workoutId}::${row.exerciseId}`));
       const sourceTraces = DATA.repTraces
         .filter(trace =>
@@ -4689,7 +4986,9 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           activeWorkoutExerciseKeys.has(`${traceWorkoutId(trace)}::${trace.exerciseId}`)
         )
         .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime));
-      return selectRepOverlayTraces(sourceTraces);
+      const traces = selectRepOverlayTraces(sourceTraces);
+      overlayTracesCache = { key: cacheKey, traces };
+      return traces;
     }
 
     function traceTimeLabel(trace) {
@@ -4697,6 +4996,44 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       const match = text.match(/\b(\d{1,2}:\d{2})(?::\d{2})?\b/);
       if (match) return match[1];
       return trace.label || trace.date || "-";
+    }
+
+    function renderOverlayLegend(traces) {
+      const legend = document.getElementById("overlayLegend");
+      const dates = [...new Set(traces.map(trace => trace.date))];
+      if (!dates.length) {
+        legend.innerHTML = "";
+        return;
+      }
+      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const allDatesDimmed = dates.every(date => isOverlayDateDimmed(date));
+      const toggleAllLabel = allDatesDimmed ? "All on" : "All off";
+      legend.innerHTML = `
+        <button type="button" class="legend-item legend-toggle-all" data-action="toggle-all" aria-pressed="${!allDatesDimmed}" title="Toggle all dates">
+          <span class="swatch" style="background:${allDatesDimmed ? "#9ca3af" : "#17202a"}"></span>${toggleAllLabel}
+        </button>
+      ` + dates.map(date => `
+        <button type="button" class="legend-item ${isOverlayDateDimmed(date) ? "is-muted" : ""}" data-date="${date}" aria-pressed="${!isOverlayDateDimmed(date)}" title="Toggle ${date}">
+          <span class="swatch" style="background:${isOverlayDateDimmed(date) ? "#9ca3af" : dateColors.get(date)}"></span>${date}
+        </button>
+      `).join("");
+      legend.querySelectorAll(".legend-item").forEach(button => {
+        button.addEventListener("click", () => {
+          if (button.dataset.action === "toggle-all") {
+            if (allDatesDimmed) {
+              dates.forEach(date => state.dimmedOverlayDates.delete(overlayDateKey(date)));
+            } else {
+              dates.forEach(date => state.dimmedOverlayDates.add(overlayDateKey(date)));
+            }
+          } else {
+            const key = overlayDateKey(button.dataset.date);
+            if (state.dimmedOverlayDates.has(key)) state.dimmedOverlayDates.delete(key);
+            else state.dimmedOverlayDates.add(key);
+          }
+          saveDashboardCache();
+          renderRepAnalyticsTab(rowsForExercise());
+        });
+      });
     }
 
     function renderRepEnergyChart(activeRows, selectedTraces = null) {
@@ -4743,34 +5080,15 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       });
       ctx.fillText("workout time", (box.left + box.right) / 2, height - 18);
 
-      const hitItems = [];
       traces.forEach((trace, idx) => {
         const x = xScale(idx);
         const energyJ = trace.energyJ;
         const y = yScale(energyJ);
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
-        const sampleIndex = representativeTraceSampleIndex(trace);
         ctx.fillStyle = `${color}${isOverlayDateDimmed(trace.date) ? "90" : "d8"}`;
         ctx.fillRect(x - barWidth / 2, y, barWidth, box.bottom - y);
-        if (!traceCanBeInspected(trace)) return;
-        hitItems.push({
-          key: repAnalyticsPointKey(canvas.id, trace, sampleIndex, "energy"),
-          traceKey: repAnalyticsTraceKey(trace),
-          sampleIndex,
-          phase: traceSamplePhase(trace, sampleIndex),
-          color,
-          x,
-          y,
-          bounds: {
-            left: x - barWidth / 2,
-            right: x + barWidth / 2,
-            top: y,
-            bottom: box.bottom
-          },
-          lines: repAnalyticsTraceLines(trace, sampleIndex)
-        });
       });
-      setChartHitAreas(canvas, hitItems);
+      setRepAnalyticsChartMeta(canvas, { kind: "energy", traces, xScale, yScale, box, barWidth, dateColors });
       finishRepAnalyticsCanvas(canvas);
     }
 
@@ -4836,7 +5154,6 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.fillText("seconds from rep start", (box.left + box.right) / 2, height - 22);
 
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
-      const hitItems = [];
       traces.forEach(trace => {
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         const strokeAlpha = isOverlayDateDimmed(trace.date)
@@ -4846,67 +5163,19 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
         drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
-        if (!traceCanBeInspected(trace)) return;
-        const loadValues = Array.isArray(trace[loadKey]) ? trace[loadKey] : [];
-        trace.timeSec.forEach((time, idx) => {
-          const rawLoad = loadValues[idx];
-          const yValue = displayLoadValue(rawLoad);
-          if (!Number.isFinite(Number(time)) || !Number.isFinite(yValue)) return;
-          hitItems.push({
-            key: repAnalyticsPointKey(canvas.id, trace, idx, "load-time"),
-            traceKey: repAnalyticsTraceKey(trace),
-            sampleIndex: idx,
-            phase: traceSamplePhase(trace, idx),
-            color,
-            x: xScale(time),
-            y: yScale(yValue),
-            lines: repAnalyticsTraceLines(trace, idx)
-          });
-        });
       });
       ctx.setLineDash([]);
-      setChartHitAreas(canvas, hitItems);
-      finishRepAnalyticsCanvas(canvas);
-
-      const allDatesDimmed = dates.every(date => isOverlayDateDimmed(date));
-      const toggleAllLabel = allDatesDimmed ? "All on" : "All off";
-      document.getElementById("overlayLegend").innerHTML = `
-        <button type="button" class="legend-item legend-toggle-all" data-action="toggle-all" aria-pressed="${!allDatesDimmed}" title="Toggle all dates">
-          <span class="swatch" style="background:${allDatesDimmed ? "#9ca3af" : "#17202a"}"></span>${toggleAllLabel}
-        </button>
-      ` + dates.map(date => `
-        <button type="button" class="legend-item ${isOverlayDateDimmed(date) ? "is-muted" : ""}" data-date="${date}" aria-pressed="${!isOverlayDateDimmed(date)}" title="Toggle ${date}">
-          <span class="swatch" style="background:${isOverlayDateDimmed(date) ? "#9ca3af" : dateColors.get(date)}"></span>${date}
-        </button>
-      `).join("");
-      document.querySelectorAll("#overlayLegend .legend-item").forEach(button => {
-        button.addEventListener("click", () => {
-          if (button.dataset.action === "toggle-all") {
-            if (allDatesDimmed) {
-              dates.forEach(date => state.dimmedOverlayDates.delete(overlayDateKey(date)));
-            } else {
-              dates.forEach(date => state.dimmedOverlayDates.add(overlayDateKey(date)));
-            }
-            saveDashboardCache();
-            renderRepEnergyChart(activeRows);
-            renderRepOverlay(activeRows);
-            renderPositionOverlay(activeRows);
-            renderLoadPositionPhaseCharts(activeRows);
-            renderVelocityPositionPhaseCharts(activeRows);
-            return;
-          }
-          const date = button.dataset.date;
-          const key = overlayDateKey(date);
-          if (state.dimmedOverlayDates.has(key)) state.dimmedOverlayDates.delete(key);
-          else state.dimmedOverlayDates.add(key);
-          saveDashboardCache();
-          renderRepEnergyChart(activeRows);
-          renderRepOverlay(activeRows);
-          renderPositionOverlay(activeRows);
-          renderLoadPositionPhaseCharts(activeRows);
-          renderVelocityPositionPhaseCharts(activeRows);
-        });
+      setRepAnalyticsChartMeta(canvas, {
+        kind: "time",
+        metric: "load-time",
+        valueKind: "load",
+        field: loadKey,
+        traces,
+        xScale,
+        yScale,
+        dateColors
       });
+      finishRepAnalyticsCanvas(canvas);
     }
 
     function tracePositionValues(trace, field) {
@@ -4998,7 +5267,6 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.fillText("seconds from rep start", (box.left + box.right) / 2, height - 22);
 
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
-      const hitItems = [];
       traces.forEach(trace => {
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         const strokeAlpha = isOverlayDateDimmed(trace.date)
@@ -5010,25 +5278,18 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
         const positionValues = tracePositionValues(trace, positionField);
         drawTracePath(ctx, trace, positionValues, xScale, yScale, strokeStyle, lineWidth);
-        if (!traceCanBeInspected(trace)) return;
-        positionValues.forEach((value, idx) => {
-          const number = Number(value);
-          const time = Number(trace.timeSec[idx] || 0);
-          if (!Number.isFinite(number) || !Number.isFinite(time)) return;
-          hitItems.push({
-            key: repAnalyticsPointKey(canvas.id, trace, idx, "position-time"),
-            traceKey: repAnalyticsTraceKey(trace),
-            sampleIndex: idx,
-            phase: traceSamplePhase(trace, idx),
-            color,
-            x: xScale(time),
-            y: yScale(number),
-            lines: repAnalyticsTraceLines(trace, idx)
-          });
-        });
       });
       ctx.setLineDash([]);
-      setChartHitAreas(canvas, hitItems);
+      setRepAnalyticsChartMeta(canvas, {
+        kind: "time",
+        metric: "position-time",
+        valueKind: "position",
+        field: positionField,
+        traces,
+        xScale,
+        yScale,
+        dateColors
+      });
       finishRepAnalyticsCanvas(canvas);
 
       ctx.textAlign = "left";
@@ -5125,7 +5386,6 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
       const dates = [...new Set(traces.map(trace => trace.date))];
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
-      const hitItems = [];
       segments.forEach(segment => {
         const trace = segment.trace;
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
@@ -5136,25 +5396,21 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.2);
         drawPhaseSegment(ctx, segment, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
-        if (!traceCanBeInspected(trace)) return;
-        [
-          { idx: segment.idx0, p: segment.p0, value: segment.l0 },
-          { idx: segment.idx1, p: segment.p1, value: segment.l1 }
-        ].forEach(point => {
-          hitItems.push({
-            key: repAnalyticsPointKey(canvas.id, trace, point.idx, `load-position-${phase}`),
-            traceKey: repAnalyticsTraceKey(trace),
-            sampleIndex: point.idx,
-            phase,
-            color,
-            x: xScale(point.p),
-            y: yScale(point.value),
-            lines: repAnalyticsTraceLines(trace, point.idx)
-          });
-        });
       });
       ctx.setLineDash([]);
-      setChartHitAreas(canvas, hitItems);
+      setRepAnalyticsChartMeta(canvas, {
+        kind: "phase",
+        metric: "load-position",
+        phase,
+        segments,
+        xScale,
+        yScale,
+        dateColors,
+        pointsForSegment: segment => [
+          { idx: segment.idx0, p: segment.p0, value: segment.l0 },
+          { idx: segment.idx1, p: segment.p1, value: segment.l1 }
+        ]
+      });
       finishRepAnalyticsCanvas(canvas);
     }
 
@@ -5253,7 +5509,6 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
       const dates = [...new Set(traces.map(trace => trace.date))];
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
-      const hitItems = [];
       segments.forEach(segment => {
         const trace = segment.trace;
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
@@ -5264,25 +5519,21 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.2);
         drawVelocityPhaseSegment(ctx, segment, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
-        if (!traceCanBeInspected(trace)) return;
-        [
-          { idx: segment.idx0, p: segment.p0, value: segment.v0 },
-          { idx: segment.idx1, p: segment.p1, value: segment.v1 }
-        ].forEach(point => {
-          hitItems.push({
-            key: repAnalyticsPointKey(canvas.id, trace, point.idx, `velocity-position-${phase}`),
-            traceKey: repAnalyticsTraceKey(trace),
-            sampleIndex: point.idx,
-            phase,
-            color,
-            x: xScale(point.p),
-            y: yScale(point.value),
-            lines: repAnalyticsTraceLines(trace, point.idx)
-          });
-        });
       });
       ctx.setLineDash([]);
-      setChartHitAreas(canvas, hitItems);
+      setRepAnalyticsChartMeta(canvas, {
+        kind: "phase",
+        metric: "velocity-position",
+        phase,
+        segments,
+        xScale,
+        yScale,
+        dateColors,
+        pointsForSegment: segment => [
+          { idx: segment.idx0, p: segment.p0, value: segment.v0 },
+          { idx: segment.idx1, p: segment.p1, value: segment.v1 }
+        ]
+      });
       finishRepAnalyticsCanvas(canvas);
     }
 
@@ -5440,15 +5691,104 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       renderHistoryTable(rows);
     }
 
+    function repAnalyticsCanvasNearViewport(canvas, margin = 720) {
+      const rect = canvas.getBoundingClientRect();
+      return rect.bottom >= -margin && rect.top <= window.innerHeight + margin;
+    }
+
+    function renderRepAnalyticsPlaceholder(canvas, text = "Chart will render as it comes into view.") {
+      clearRepAnalyticsCanvasState(canvas);
+      drawEmpty(canvas, text);
+    }
+
+    function runQueuedRepAnalyticsChart(canvasId) {
+      if (state.activeTab !== "repAnalytics") return;
+      const canvas = document.getElementById(canvasId);
+      const renderer = repAnalyticsLazyRenderers.get(canvasId);
+      if (!canvas || !renderer) return;
+      if (repAnalyticsObserver) repAnalyticsObserver.unobserve(canvas);
+      renderer();
+    }
+
+    function ensureRepAnalyticsObserver() {
+      if (!("IntersectionObserver" in window)) return null;
+      if (repAnalyticsObserver) return repAnalyticsObserver;
+      repAnalyticsObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          runQueuedRepAnalyticsChart(entry.target.id);
+        });
+      }, { rootMargin: "720px 0px" });
+      return repAnalyticsObserver;
+    }
+
+    function queueRepAnalyticsChart(canvasId, renderer, placeholderText) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      repAnalyticsLazyRenderers.set(canvasId, renderer);
+      renderRepAnalyticsPlaceholder(canvas, placeholderText);
+      if (repAnalyticsCanvasNearViewport(canvas)) {
+        window.requestAnimationFrame(() => runQueuedRepAnalyticsChart(canvasId));
+        return;
+      }
+      const observer = ensureRepAnalyticsObserver();
+      if (observer) observer.observe(canvas);
+      else window.requestAnimationFrame(() => runQueuedRepAnalyticsChart(canvasId));
+    }
+
+    function queueRepAnalyticsChartPair(canvasIds, renderer, placeholderText) {
+      let hasRendered = false;
+      const renderOnce = () => {
+        if (hasRendered) return;
+        hasRendered = true;
+        renderer();
+      };
+      canvasIds.forEach(canvasId => {
+        queueRepAnalyticsChart(canvasId, renderOnce, placeholderText);
+      });
+    }
+
+    function updateRepAnalyticsNotes() {
+      document.getElementById("repOverlayNote").textContent =
+        state.repOverlayMode === "all"
+          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.`
+          : `${overlayModeLabel()} shows the ${maxRepTypeDescription()} for each selected workout date. Echo traces are dashed.`;
+      document.getElementById("positionOverlayNote").textContent =
+        state.repOverlayMode === "all"
+          ? `${positionOverlayLabel()} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.`
+          : `${overlayModeLabel()} uses the same ${maxRepTypeDescription()} as the load overlay; ${positionOverlayLabel().toLowerCase()} position is shown. Echo traces are dashed.`;
+      document.getElementById("loadPositionNote").textContent =
+        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
+      document.getElementById("velocityPositionNote").textContent =
+        `${positionOverlayLabel()} position versus average cable velocity for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
+      document.getElementById("repEnergyNote").textContent =
+        `${overlayModeLabel()} energy per selected ${repTypeFilterLabel().toLowerCase()} over workout time. Bars use workout date colours.`;
+    }
+
     function renderRepAnalyticsTab(rows) {
       const overlayTraces = selectedOverlayTraces(rows);
       currentRepAnalyticsRows = rows;
       currentRepAnalyticsOverlayTraces = overlayTraces;
-      renderRepEnergyChart(rows, overlayTraces);
-      renderRepOverlay(rows, overlayTraces);
-      renderPositionOverlay(rows, overlayTraces);
-      renderLoadPositionPhaseCharts(rows, overlayTraces);
-      renderVelocityPositionPhaseCharts(rows, overlayTraces);
+      updateRepAnalyticsNotes();
+      renderOverlayLegend(overlayTraces);
+      if (activeRepAnalyticsItem && !overlayTraces.some(trace =>
+        repAnalyticsTraceKey(trace) === activeRepAnalyticsItem.traceKey && traceCanBeInspected(trace)
+      )) {
+        activeRepAnalyticsItem = null;
+      }
+      queueRepAnalyticsChart("repOverlay", () => renderRepOverlay(rows, overlayTraces), "Load overlay will render as it comes into view.");
+      queueRepAnalyticsChart("positionOverlay", () => renderPositionOverlay(rows, overlayTraces), "Position overlay will render as it comes into view.");
+      queueRepAnalyticsChartPair(
+        ["concentricLoadPositionChart", "eccentricLoadPositionChart"],
+        () => renderLoadPositionPhaseCharts(rows, overlayTraces),
+        "Load-position chart will render as it comes into view."
+      );
+      queueRepAnalyticsChartPair(
+        ["concentricVelocityPositionChart", "eccentricVelocityPositionChart"],
+        () => renderVelocityPositionPhaseCharts(rows, overlayTraces),
+        "Velocity-position chart will render as it comes into view."
+      );
+      queueRepAnalyticsChart("repEnergyChart", () => renderRepEnergyChart(rows, overlayTraces), "Energy chart will render as it comes into view.");
     }
 
     function renderActiveTab(rows) {
@@ -5481,6 +5821,15 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     setupMuscleBreakdownTooltips();
     render();
     saveDashboardCache();
+    if (shouldMigrateLegacyDashboardCache) {
+      window.setTimeout(() => saveDashboardCache({ includeData: true }), 500);
+    } else if (shouldClearLegacyDashboardCache) {
+      try {
+        localStorage.removeItem(LEGACY_CACHE_KEY);
+      } catch (error) {
+        // Nothing else to do; the split settings cache has already been written.
+      }
+    }
   </script>
 </body>
 </html>
