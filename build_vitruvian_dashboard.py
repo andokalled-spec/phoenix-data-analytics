@@ -36,6 +36,14 @@ def as_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def clean_name(value: Any) -> str:
     text = str(value or "").strip()
     return text or "Unknown"
@@ -236,6 +244,87 @@ def detect_rep_centers(samples: list[dict[str, Any]], expected_reps: int) -> tup
     return sorted(centers, key=lambda i: timestamps[i]), method
 
 
+def sample_position(row: dict[str, Any]) -> float:
+    position_a = as_float(row.get("position"))
+    position_b = as_float(row.get("positionB"), position_a)
+    return (position_a + position_b) / 2
+
+
+def sample_velocity(row: dict[str, Any]) -> float:
+    return (as_float(row.get("velocity")) + as_float(row.get("velocityB"))) / 2
+
+
+def status_groups(samples: list[dict[str, Any]], status_value: int) -> list[tuple[int, int]]:
+    groups: list[tuple[int, int]] = []
+    start: int | None = None
+    for idx, row in enumerate(samples):
+        matches = as_int(row.get("status")) == status_value
+        if matches and start is None:
+            start = idx
+        elif not matches and start is not None:
+            groups.append((start, idx - 1))
+            start = None
+    if start is not None:
+        groups.append((start, len(samples) - 1))
+    return groups
+
+
+def stop_at_top_end_index(
+    working_samples: list[dict[str, Any]],
+    group_start: int,
+    group_end: int,
+) -> int:
+    top_position = max(sample_position(row) for row in working_samples[group_start : group_end + 1])
+    end_idx = group_end
+    for scan in range(group_end + 1, len(working_samples)):
+        position = sample_position(working_samples[scan])
+        velocity = sample_velocity(working_samples[scan])
+        if top_position - position > 5.0 or velocity < -8.0:
+            break
+        end_idx = scan
+    return end_idx
+
+
+def status_based_rep_segments(
+    session: dict[str, Any],
+    working_samples: list[dict[str, Any]],
+    expected_reps: int,
+) -> tuple[list[tuple[int, int]], str]:
+    top_groups = status_groups(working_samples, 1)
+    if len(top_groups) < expected_reps:
+        return [], "status-top-groups-short"
+    if len(top_groups) > expected_reps:
+        top_groups = top_groups[-expected_reps:]
+
+    positions = [sample_position(row) for row in working_samples]
+    starts: list[int] = []
+    for group_idx, (group_start, _group_end) in enumerate(top_groups):
+        region_start = 0 if group_idx == 0 else top_groups[group_idx - 1][1] + 1
+        region_end = max(region_start, group_start)
+        start_idx = min(range(region_start, region_end + 1), key=lambda idx: positions[idx])
+        if starts and start_idx <= starts[-1]:
+            start_idx = min(len(working_samples) - 1, starts[-1] + 1)
+        starts.append(start_idx)
+
+    segments: list[tuple[int, int]] = []
+    stop_at_top = as_bool(session.get("stopAtTop"))
+    for idx, (group_start, group_end) in enumerate(top_groups):
+        start_idx = starts[idx]
+        if idx < len(top_groups) - 1:
+            end_idx = starts[idx + 1]
+        elif stop_at_top:
+            end_idx = stop_at_top_end_index(working_samples, group_start, group_end)
+        else:
+            end_idx = len(working_samples) - 1
+        end_idx = max(start_idx, min(len(working_samples) - 1, end_idx))
+        if end_idx - start_idx + 1 >= 6:
+            segments.append((start_idx, end_idx))
+
+    if len(segments) != expected_reps:
+        return [], "status-segments-incomplete"
+    return segments, "status-top-anchored-stop-at-top" if stop_at_top else "status-top-anchored"
+
+
 def segment_working_reps(
     session: dict[str, Any],
     samples: list[dict[str, Any]],
@@ -260,11 +349,6 @@ def segment_working_reps(
     if len(working_samples) < expected_reps * 6:
         return []
 
-    centers, method = detect_rep_centers(working_samples, expected_reps)
-    if not centers:
-        return []
-
-    timestamps = [as_int(row.get("timestamp")) for row in working_samples]
     avg_velocities = [
         (as_float(row.get("velocity")) + as_float(row.get("velocityB"))) / 2
         for row in working_samples
@@ -273,24 +357,36 @@ def segment_working_reps(
     parts = fmt_dt(session.get("timestamp"))
     exercise_name = clean_name(session.get("exerciseName"))
 
-    for rep_idx, center_idx in enumerate(centers, start=1):
-        start_idx = 0 if rep_idx == 1 else (centers[rep_idx - 2] + center_idx) // 2
-        end_idx = len(working_samples) - 1
-        if rep_idx < len(centers):
-            end_idx = (center_idx + centers[rep_idx]) // 2
+    segments, method = status_based_rep_segments(session, working_samples, expected_reps)
+    if not segments:
+        centers, method = detect_rep_centers(working_samples, expected_reps)
+        if not centers:
+            return []
+        segments = []
+        for rep_zero_idx, center_idx in enumerate(centers):
+            start_idx = 0 if rep_zero_idx == 0 else (centers[rep_zero_idx - 1] + center_idx) // 2
+            end_idx = len(working_samples) - 1
+            if rep_zero_idx < len(centers) - 1:
+                end_idx = (center_idx + centers[rep_zero_idx + 1]) // 2
 
-        active_indices = [
-            idx for idx in range(start_idx, end_idx + 1) if abs(avg_velocities[idx]) > 1.5
-        ]
-        if active_indices:
-            start_idx = max(start_idx, active_indices[0] - 4)
-            end_idx = min(end_idx, active_indices[-1] + 4)
+            active_indices = [
+                idx for idx in range(start_idx, end_idx + 1) if abs(avg_velocities[idx]) > 1.5
+            ]
+            if active_indices:
+                start_idx = max(start_idx, active_indices[0] - 4)
+                end_idx = min(end_idx, active_indices[-1] + 4)
+            segments.append((start_idx, end_idx))
 
+    for rep_idx, (start_idx, end_idx) in enumerate(segments, start=1):
         segment = working_samples[start_idx : end_idx + 1]
         if len(segment) < 6:
             continue
 
+        is_final_stop_at_top_rep = as_bool(session.get("stopAtTop")) and rep_idx == expected_reps
         energy = segment_energy_joules(segment, cable_count)
+        if is_final_stop_at_top_rep:
+            energy["eccentric"] = 0.0
+            energy["total"] = energy["concentric"]
         full_per_cable_loads: list[float] = []
         full_total_loads: list[float] = []
         for row in segment:
@@ -336,8 +432,10 @@ def segment_working_reps(
                 "routineSessionId": session.get("routineSessionId") or "",
                 "routineName": session.get("routineName") or "",
                 "mode": session.get("mode") or "",
+                "stopAtTop": as_bool(session.get("stopAtTop")),
                 "setNumber": None if set_number is None else set_number + 1,
                 "repIndex": rep_idx,
+                "isFinalRep": rep_idx == expected_reps,
                 "weightPerCableKg": rounded(session.get("weightPerCableKg"), 2),
                 "cableCount": cable_count,
                 "durationSec": rounded(times[-1] if times else 0, 3),
@@ -394,6 +492,7 @@ def build_tables(raw_data: dict[str, Any]) -> dict[str, Any]:
             "routineName": raw.get("routineName") or "",
             "routineId": raw.get("routineId") or "",
             "mode": raw.get("mode") or "",
+            "stopAtTop": as_bool(raw.get("stopAtTop")),
             "targetReps": as_int(raw.get("targetReps")),
             "totalReps": as_int(raw.get("totalReps")),
             "workingReps": reps,
@@ -2016,6 +2115,25 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       <article class="panel wide">
         <div class="panel-head">
           <div>
+            <h2>Velocity vs Position</h2>
+            <p class="panel-note" id="velocityPositionNote">Velocity against cable position for the same selected working reps.</p>
+          </div>
+        </div>
+        <div class="phase-chart-grid">
+          <div>
+            <h3 class="phase-chart-title">Concentric</h3>
+            <canvas id="concentricVelocityPositionChart"></canvas>
+          </div>
+          <div>
+            <h3 class="phase-chart-title">Eccentric</h3>
+            <canvas id="eccentricVelocityPositionChart"></canvas>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel wide">
+        <div class="panel-head">
+          <div>
             <h2>Energy Per Rep</h2>
             <p class="panel-note" id="repEnergyNote">Total energy for each selected working rep over workout time.</p>
           </div>
@@ -2141,7 +2259,14 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
             Object.prototype.hasOwnProperty.call(row, "largestEchoRepEnergyJ") &&
             Object.prototype.hasOwnProperty.call(row, "largestNonEchoRepEnergyJ")
           );
-        if (!hasPositionChannels || !hasEnergyFields || !hasSummaryEnergyFields) return { settings: parsed.settings || {} };
+        const hasStopAtTopSegmentationFields = !parsed.data.repTraces?.length ||
+          parsed.data.repTraces.every(trace =>
+            Object.prototype.hasOwnProperty.call(trace, "stopAtTop") &&
+            Object.prototype.hasOwnProperty.call(trace, "isFinalRep")
+          );
+        if (!hasPositionChannels || !hasEnergyFields || !hasSummaryEnergyFields || !hasStopAtTopSegmentationFields) {
+          return { settings: parsed.settings || {} };
+        }
         return parsed;
       } catch (error) {
         return null;
@@ -2236,6 +2361,16 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     const bodyMusclesBack = document.getElementById("bodyMusclesBack");
     const chartTooltip = document.getElementById("chartTooltip");
     const chartHitAreas = new Map();
+    const repAnalyticsBaseImages = new Map();
+    const repAnalyticsCanvasIds = [
+      "repOverlay",
+      "positionOverlay",
+      "concentricLoadPositionChart",
+      "eccentricLoadPositionChart",
+      "concentricVelocityPositionChart",
+      "eccentricVelocityPositionChart",
+      "repEnergyChart"
+    ];
     const exerciseMuscleLookup = buildExerciseMuscleLookup();
     const refinedExerciseBodyMuscleLookup = buildRefinedExerciseBodyMuscleLookup();
     const mainContent = document.querySelector("main");
@@ -2245,6 +2380,10 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     let frontBodyChart = null;
     let backBodyChart = null;
     let currentMuscleFocusItems = [];
+    let currentRepAnalyticsRows = [];
+    let currentRepAnalyticsOverlayTraces = [];
+    let activeRepAnalyticsItem = null;
+    let repAnalyticsDragCanvas = null;
 
     const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
 
@@ -2256,6 +2395,12 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
     function asInt(value, fallback = 0) {
       return Math.trunc(asNumber(value, fallback));
+    }
+
+    function asBool(value) {
+      if (typeof value === "boolean") return value;
+      if (typeof value === "number") return value !== 0;
+      return ["1", "true", "yes", "y", "on"].includes(String(value || "").trim().toLowerCase());
     }
 
     function cleanName(value) {
@@ -2465,6 +2610,85 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       return { centers: centers.sort((a, b) => timestamps[a] - timestamps[b]), method };
     }
 
+    function samplePosition(row) {
+      const positionA = asNumber(row.position);
+      const positionB = asNumber(row.positionB, positionA);
+      return (positionA + positionB) / 2;
+    }
+
+    function sampleVelocity(row) {
+      return (asNumber(row.velocity) + asNumber(row.velocityB)) / 2;
+    }
+
+    function statusGroups(samples, statusValue) {
+      const groups = [];
+      let start = null;
+      samples.forEach((row, idx) => {
+        const matches = asInt(row.status) === statusValue;
+        if (matches && start === null) start = idx;
+        else if (!matches && start !== null) {
+          groups.push([start, idx - 1]);
+          start = null;
+        }
+      });
+      if (start !== null) groups.push([start, samples.length - 1]);
+      return groups;
+    }
+
+    function stopAtTopEndIndex(workingSamples, groupStart, groupEnd) {
+      let topPosition = -Infinity;
+      for (let idx = groupStart; idx <= groupEnd; idx += 1) {
+        topPosition = Math.max(topPosition, samplePosition(workingSamples[idx]));
+      }
+      let endIdx = groupEnd;
+      for (let scan = groupEnd + 1; scan < workingSamples.length; scan += 1) {
+        const position = samplePosition(workingSamples[scan]);
+        const velocity = sampleVelocity(workingSamples[scan]);
+        if (topPosition - position > 5 || velocity < -8) break;
+        endIdx = scan;
+      }
+      return endIdx;
+    }
+
+    function statusBasedRepSegments(session, workingSamples, expectedReps) {
+      let topGroups = statusGroups(workingSamples, 1);
+      if (topGroups.length < expectedReps) return { segments: [], method: "status-top-groups-short" };
+      if (topGroups.length > expectedReps) topGroups = topGroups.slice(-expectedReps);
+
+      const positions = workingSamples.map(row => samplePosition(row));
+      const starts = [];
+      topGroups.forEach(([groupStart], groupIdx) => {
+        const regionStart = groupIdx === 0 ? 0 : topGroups[groupIdx - 1][1] + 1;
+        const regionEnd = Math.max(regionStart, groupStart);
+        let startIdx = regionStart;
+        for (let scan = regionStart + 1; scan <= regionEnd; scan += 1) {
+          if (positions[scan] < positions[startIdx]) startIdx = scan;
+        }
+        if (starts.length && startIdx <= starts[starts.length - 1]) {
+          startIdx = Math.min(workingSamples.length - 1, starts[starts.length - 1] + 1);
+        }
+        starts.push(startIdx);
+      });
+
+      const segments = [];
+      const stopAtTop = asBool(session.stopAtTop);
+      topGroups.forEach(([groupStart, groupEnd], idx) => {
+        const startIdx = starts[idx];
+        let endIdx;
+        if (idx < topGroups.length - 1) endIdx = starts[idx + 1];
+        else if (stopAtTop) endIdx = stopAtTopEndIndex(workingSamples, groupStart, groupEnd);
+        else endIdx = workingSamples.length - 1;
+        endIdx = Math.max(startIdx, Math.min(workingSamples.length - 1, endIdx));
+        if (endIdx - startIdx + 1 >= 6) segments.push([startIdx, endIdx]);
+      });
+
+      if (segments.length !== expectedReps) return { segments: [], method: "status-segments-incomplete" };
+      return {
+        segments,
+        method: stopAtTop ? "status-top-anchored-stop-at-top" : "status-top-anchored"
+      };
+    }
+
     function isEchoMode(value) {
       return String(value || "").trim().toLowerCase().includes("echo");
     }
@@ -2512,29 +2736,41 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       });
       if (workingSamples.length < expectedReps * 6) return [];
 
-      const detected = detectRepCenters(workingSamples, expectedReps);
-      const centers = detected.centers;
-      if (!centers.length) return [];
-
       const avgVelocities = workingSamples.map(row => (asNumber(row.velocity) + asNumber(row.velocityB)) / 2);
       const parts = fmtLocalParts(session.timestamp);
       const exerciseName = cleanName(session.exerciseName);
 
-      return centers.map((centerIdx, idx) => {
-        let startIdx = idx === 0 ? 0 : Math.floor((centers[idx - 1] + centerIdx) / 2);
-        let endIdx = idx < centers.length - 1 ? Math.floor((centerIdx + centers[idx + 1]) / 2) : workingSamples.length - 1;
-        const activeIndices = [];
-        for (let scan = startIdx; scan <= endIdx; scan += 1) {
-          if (Math.abs(avgVelocities[scan]) > 1.5) activeIndices.push(scan);
-        }
-        if (activeIndices.length) {
-          startIdx = Math.max(startIdx, activeIndices[0] - 4);
-          endIdx = Math.min(endIdx, activeIndices[activeIndices.length - 1] + 4);
-        }
+      let detected = statusBasedRepSegments(session, workingSamples, expectedReps);
+      let segments = detected.segments;
+      if (!segments.length) {
+        detected = detectRepCenters(workingSamples, expectedReps);
+        const centers = detected.centers;
+        if (!centers.length) return [];
+        segments = centers.map((centerIdx, idx) => {
+          let startIdx = idx === 0 ? 0 : Math.floor((centers[idx - 1] + centerIdx) / 2);
+          let endIdx = idx < centers.length - 1 ? Math.floor((centerIdx + centers[idx + 1]) / 2) : workingSamples.length - 1;
+          const activeIndices = [];
+          for (let scan = startIdx; scan <= endIdx; scan += 1) {
+            if (Math.abs(avgVelocities[scan]) > 1.5) activeIndices.push(scan);
+          }
+          if (activeIndices.length) {
+            startIdx = Math.max(startIdx, activeIndices[0] - 4);
+            endIdx = Math.min(endIdx, activeIndices[activeIndices.length - 1] + 4);
+          }
+          return [startIdx, endIdx];
+        });
+      }
+
+      return segments.map(([startIdx, endIdx], idx) => {
         const segment = workingSamples.slice(startIdx, endIdx + 1);
         if (segment.length < 6) return null;
 
+        const isFinalStopAtTopRep = asBool(session.stopAtTop) && idx + 1 === expectedReps;
         const energy = segmentEnergyJoules(segment, cableCount);
+        if (isFinalStopAtTopRep) {
+          energy.eccentric = 0;
+          energy.total = energy.concentric;
+        }
         const fullPerCableLoads = [];
         const fullTotalLoads = [];
         segment.forEach(row => {
@@ -2578,8 +2814,10 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           routineSessionId: session.routineSessionId || "",
           routineName: session.routineName || "",
           mode: session.mode || "",
+          stopAtTop: asBool(session.stopAtTop),
           setNumber: setNumber === null || setNumber === undefined ? null : setNumber + 1,
           repIndex: idx + 1,
+          isFinalRep: idx + 1 === expectedReps,
           weightPerCableKg: roundOrNull(session.weightPerCableKg, 2),
           cableCount,
           durationSec: roundOrNull(times[times.length - 1] || 0, 3),
@@ -2637,6 +2875,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           routineName: raw.routineName || "",
           routineId: raw.routineId || "",
           mode: raw.mode || "",
+          stopAtTop: asBool(raw.stopAtTop),
           targetReps: asInt(raw.targetReps),
           totalReps: asInt(raw.totalReps),
           workingReps: reps,
@@ -3177,7 +3416,37 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       chartHitAreas.set(canvas.id, items);
     }
 
-    function nearestChartItem(canvas, mouseX, mouseY) {
+    function isRepAnalyticsCanvas(canvas) {
+      return canvas && repAnalyticsCanvasIds.includes(canvas.id);
+    }
+
+    function cacheRepAnalyticsCanvasBase(canvas) {
+      if (!isRepAnalyticsCanvas(canvas)) return;
+      try {
+        const ctx = canvas.getContext("2d");
+        repAnalyticsBaseImages.set(canvas.id, ctx.getImageData(0, 0, canvas.width, canvas.height));
+      } catch (error) {
+        repAnalyticsBaseImages.delete(canvas.id);
+      }
+    }
+
+    function restoreRepAnalyticsCanvasBase(canvas) {
+      const image = repAnalyticsBaseImages.get(canvas.id);
+      if (!image || image.width !== canvas.width || image.height !== canvas.height) return false;
+      const ctx = canvas.getContext("2d");
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.putImageData(image, 0, 0);
+      ctx.restore();
+      return true;
+    }
+
+    function finishRepAnalyticsCanvas(canvas) {
+      cacheRepAnalyticsCanvasBase(canvas);
+      drawActiveRepAnalyticsSelection(canvas);
+    }
+
+    function nearestChartItem(canvas, mouseX, mouseY, maxDistance = 36) {
       const items = chartHitAreas.get(canvas.id) || [];
       let best = null;
       items.forEach(item => {
@@ -3194,7 +3463,209 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         }
         if (!best || score < best.score) best = { item, score };
       });
-      return best && best.score <= 36 ? best.item : null;
+      return best && best.score <= maxDistance ? best.item : null;
+    }
+
+    function repAnalyticsPointKey(canvasId, trace, idx, metric) {
+      return [
+        canvasId,
+        repAnalyticsTraceKey(trace),
+        idx,
+        metric
+      ].join("::");
+    }
+
+    function repAnalyticsTraceKey(trace) {
+      return [
+        traceWorkoutId(trace) || "",
+        trace.exerciseId || "",
+        trace.dateTime || trace.date || "",
+        trace.repIndex || "",
+        traceModeKey(trace)
+      ].join("::");
+    }
+
+    function representativeTraceSampleIndex(trace) {
+      const count = Array.isArray(trace.timeSec) ? trace.timeSec.length : 0;
+      return Math.max(0, Math.floor((count - 1) / 2));
+    }
+
+    function traceSampleValue(trace, field, idx) {
+      const values = field === "position"
+        ? tracePositionValues(trace, positionOverlayField())
+        : Array.isArray(trace[field])
+          ? trace[field]
+          : [];
+      if (!values.length) return null;
+      const sampleIdx = Math.max(0, Math.min(values.length - 1, Number(idx) || 0));
+      const value = Number(values[sampleIdx]);
+      return Number.isFinite(value) ? value : null;
+    }
+
+    function traceSamplePhase(trace, idx) {
+      if (trace.stopAtTop && trace.isFinalRep) {
+        const positionsForStop = tracePositionValues(trace, positionOverlayField()).map(value => Number(value));
+        const sampleIdxForStop = Math.max(0, Math.min(positionsForStop.length - 1, Number(idx) || 0));
+        const previousDeltaForStop = sampleIdxForStop > 0 ? positionsForStop[sampleIdxForStop] - positionsForStop[sampleIdxForStop - 1] : 0;
+        const nextDeltaForStop = sampleIdxForStop < positionsForStop.length - 1 ? positionsForStop[sampleIdxForStop + 1] - positionsForStop[sampleIdxForStop] : 0;
+        if (previousDeltaForStop > 0.05 || nextDeltaForStop > 0.05) return "concentric";
+        return "hold";
+      }
+      const positions = tracePositionValues(trace, positionOverlayField()).map(value => Number(value));
+      if (!positions.length) return "hold";
+      const sampleIdx = Math.max(0, Math.min(positions.length - 1, Number(idx) || 0));
+      const previousDelta = sampleIdx > 0 ? positions[sampleIdx] - positions[sampleIdx - 1] : 0;
+      const nextDelta = sampleIdx < positions.length - 1 ? positions[sampleIdx + 1] - positions[sampleIdx] : 0;
+      const delta = Math.abs(previousDelta) >= 0.05 ? previousDelta : nextDelta;
+      if (delta > 0.05) return "concentric";
+      if (delta < -0.05) return "eccentric";
+      return "hold";
+    }
+
+    function traceSamplePhaseLabel(trace, idx) {
+      const phase = traceSamplePhase(trace, idx);
+      if (phase === "concentric") return "Concentric";
+      if (phase === "eccentric") return "Eccentric";
+      return "Hold / transition";
+    }
+
+    function repAnalyticsTraceLines(trace, sampleIndex, detailLines = []) {
+      const time = traceSampleValue(trace, "timeSec", sampleIndex);
+      const load = traceSampleValue(trace, traceLoadField(), sampleIndex);
+      const position = traceSampleValue(trace, "position", sampleIndex);
+      const velocity = traceSampleValue(trace, "velocity", sampleIndex);
+      return [
+        `${trace.label || trace.date || "-"} ${traceTimeLabel(trace)}`,
+        trace.exerciseName || "Working rep",
+        `${traceModeKey(trace)} rep ${trace.repIndex || "-"}`,
+        ...detailLines,
+        `Point time: ${time === null ? "-" : `${fmtNumber(time, 2)} s`}`,
+        `Load: ${fmtTraceBasisLoad(load, 1)}`,
+        `${positionOverlayLabel()} position: ${position === null ? "-" : `${fmtNumber(position, 1)} cm`}`,
+        `Velocity: ${velocity === null ? "-" : `${fmtNumber(velocity, 1)} mm/s`}`,
+        `Phase: ${traceSamplePhaseLabel(trace, sampleIndex)}`,
+        `Rep energy: ${fmtEnergyJ(trace.totalEnergyJ, 0)}`,
+        `Average load: ${fmtTraceBasisLoad(trace[traceAverageLoadField()], 1)}`,
+        `Median load: ${fmtTraceBasisLoad(trace[traceMedianLoadField()], 1)}`
+      ];
+    }
+
+    function drawRepAnalyticsSelection(canvas, item) {
+      if (!item) return;
+      const ctx = canvas.getContext("2d");
+      ctx.save();
+      ctx.setLineDash([]);
+      const color = item.color || "#2563eb";
+      if (item.bounds) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(
+          item.bounds.left - 2,
+          item.bounds.top - 2,
+          item.bounds.right - item.bounds.left + 4,
+          item.bounds.bottom - item.bounds.top + 4
+        );
+      } else {
+        ctx.strokeStyle = canvasColor();
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, 7, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(item.x - 11, item.y);
+        ctx.lineTo(item.x + 11, item.y);
+        ctx.moveTo(item.x, item.y - 11);
+        ctx.lineTo(item.x, item.y + 11);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function repAnalyticsCanvasPhase(canvasId) {
+      if (canvasId.includes("concentric")) return "concentric";
+      if (canvasId.includes("eccentric")) return "eccentric";
+      return "";
+    }
+
+    function matchingRepAnalyticsItem(canvas) {
+      if (!activeRepAnalyticsItem) return null;
+      const canvasPhase = repAnalyticsCanvasPhase(canvas.id);
+      if (canvasPhase && activeRepAnalyticsItem.phase !== canvasPhase) return null;
+      const items = chartHitAreas.get(canvas.id) || [];
+      if (!items.length) return null;
+      if (canvas.id === "repEnergyChart") {
+        return items.find(candidate => candidate.traceKey === activeRepAnalyticsItem.traceKey) || null;
+      }
+      const exact = items.find(candidate =>
+        candidate.traceKey === activeRepAnalyticsItem.traceKey &&
+        candidate.sampleIndex === activeRepAnalyticsItem.sampleIndex
+      );
+      if (exact) return exact;
+      const sameTrace = items.filter(candidate => candidate.traceKey === activeRepAnalyticsItem.traceKey);
+      if (!sameTrace.length) return null;
+      return sameTrace.reduce((best, candidate) => {
+        const distance = Math.abs(Number(candidate.sampleIndex || 0) - Number(activeRepAnalyticsItem.sampleIndex || 0));
+        const bestDistance = Math.abs(Number(best.sampleIndex || 0) - Number(activeRepAnalyticsItem.sampleIndex || 0));
+        return distance < bestDistance ? candidate : best;
+      }, sameTrace[0]);
+    }
+
+    function drawActiveRepAnalyticsSelection(canvas) {
+      const item = matchingRepAnalyticsItem(canvas);
+      if (!item) return;
+      drawRepAnalyticsSelection(canvas, item);
+    }
+
+    function refreshRepAnalyticsSelections() {
+      repAnalyticsCanvasIds.forEach(canvasId => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !restoreRepAnalyticsCanvasBase(canvas)) return;
+        drawActiveRepAnalyticsSelection(canvas);
+      });
+    }
+
+    function updateRepAnalyticsInspector(canvas, event) {
+      const rect = canvas.getBoundingClientRect();
+      const item = nearestChartItem(canvas, event.clientX - rect.left, event.clientY - rect.top, 80);
+      if (!item) return false;
+      activeRepAnalyticsItem = { ...item, canvasId: canvas.id };
+      refreshRepAnalyticsSelections();
+      showChartTooltip(event, activeRepAnalyticsItem);
+      return true;
+    }
+
+    function setupRepAnalyticsInspectors() {
+      repAnalyticsCanvasIds.forEach(id => {
+        const canvas = document.getElementById(id);
+        if (!canvas) return;
+        canvas.addEventListener("pointerdown", event => {
+          if (event.button !== undefined && event.button !== 0) return;
+          if (!updateRepAnalyticsInspector(canvas, event)) return;
+          repAnalyticsDragCanvas = canvas;
+          if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
+          event.preventDefault();
+        });
+        canvas.addEventListener("pointermove", event => {
+          if (repAnalyticsDragCanvas !== canvas) return;
+          updateRepAnalyticsInspector(canvas, event);
+          event.preventDefault();
+        });
+        canvas.addEventListener("pointerup", event => {
+          if (repAnalyticsDragCanvas !== canvas) return;
+          updateRepAnalyticsInspector(canvas, event);
+          repAnalyticsDragCanvas = null;
+          if (canvas.releasePointerCapture) canvas.releasePointerCapture(event.pointerId);
+        });
+        canvas.addEventListener("pointercancel", () => {
+          repAnalyticsDragCanvas = null;
+        });
+      });
     }
 
     function setupChartTooltips() {
@@ -3247,6 +3718,22 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
     function traceLoadField() {
       return state.loadBasis === "total" ? "totalLoadKg" : "perCableLoadKg";
+    }
+
+    function traceAverageLoadField() {
+      return state.loadBasis === "total" ? "avgTotalLoadKg" : "avgPerCableLoadKg";
+    }
+
+    function traceMedianLoadField() {
+      return state.loadBasis === "total" ? "medianTotalLoadKg" : "medianPerCableLoadKg";
+    }
+
+    function fmtTraceBasisLoad(value, digits = 1) {
+      const text = fmtNumber(displayLoadValue(value), digits);
+      if (text === "-") return "-";
+      return state.loadBasis === "total"
+        ? `${text} ${loadUnitText()} total`
+        : `${text} ${loadUnitText()} per cable`;
     }
 
     function loadUnitLabel() {
@@ -3639,6 +4126,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.font = "14px Segoe UI, Arial";
       ctx.textAlign = "center";
       ctx.fillText(text, width / 2, height / 2);
+      cacheRepAnalyticsCanvasBase(canvas);
     }
 
     function scaleLinear(domainMin, domainMax, rangeMin, rangeMax) {
@@ -4135,6 +4623,10 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       return state.dimmedOverlayDates.has(overlayDateKey(date));
     }
 
+    function traceCanBeInspected(trace) {
+      return !isOverlayDateDimmed(trace.date);
+    }
+
     function overlayRankField() {
       if (state.repOverlayMode === "maxAverage") {
         return state.loadBasis === "total" ? "avgTotalLoadKg" : "avgPerCableLoadKg";
@@ -4274,9 +4766,16 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         const energyJ = trace.energyJ;
         const y = yScale(energyJ);
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
+        const sampleIndex = representativeTraceSampleIndex(trace);
         ctx.fillStyle = `${color}${isOverlayDateDimmed(trace.date) ? "90" : "d8"}`;
         ctx.fillRect(x - barWidth / 2, y, barWidth, box.bottom - y);
+        if (!traceCanBeInspected(trace)) return;
         hitItems.push({
+          key: repAnalyticsPointKey(canvas.id, trace, sampleIndex, "energy"),
+          traceKey: repAnalyticsTraceKey(trace),
+          sampleIndex,
+          phase: traceSamplePhase(trace, sampleIndex),
+          color,
           x,
           y,
           bounds: {
@@ -4285,15 +4784,11 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
             top: y,
             bottom: box.bottom
           },
-          lines: [
-            `${trace.label || trace.date || "-"} ${traceTimeLabel(trace)}`,
-            trace.exerciseName || "Working rep",
-            `${traceModeKey(trace)} rep ${trace.repIndex || "-"}`,
-            `Energy: ${fmtEnergyJ(trace.energyJ, 0)}`
-          ]
+          lines: repAnalyticsTraceLines(trace, sampleIndex)
         });
       });
       setChartHitAreas(canvas, hitItems);
+      finishRepAnalyticsCanvas(canvas);
     }
 
     function drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, strokeStyle, lineWidth) {
@@ -4358,6 +4853,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.fillText("seconds from rep start", (box.left + box.right) / 2, height - 22);
 
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const hitItems = [];
       traces.forEach(trace => {
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         const strokeAlpha = isOverlayDateDimmed(trace.date)
@@ -4367,8 +4863,27 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
         drawLoadTracePath(ctx, trace, loadKey, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
+        if (!traceCanBeInspected(trace)) return;
+        const loadValues = Array.isArray(trace[loadKey]) ? trace[loadKey] : [];
+        trace.timeSec.forEach((time, idx) => {
+          const rawLoad = loadValues[idx];
+          const yValue = displayLoadValue(rawLoad);
+          if (!Number.isFinite(Number(time)) || !Number.isFinite(yValue)) return;
+          hitItems.push({
+            key: repAnalyticsPointKey(canvas.id, trace, idx, "load-time"),
+            traceKey: repAnalyticsTraceKey(trace),
+            sampleIndex: idx,
+            phase: traceSamplePhase(trace, idx),
+            color,
+            x: xScale(time),
+            y: yScale(yValue),
+            lines: repAnalyticsTraceLines(trace, idx)
+          });
+        });
       });
       ctx.setLineDash([]);
+      setChartHitAreas(canvas, hitItems);
+      finishRepAnalyticsCanvas(canvas);
 
       const allDatesDimmed = dates.every(date => isOverlayDateDimmed(date));
       const toggleAllLabel = allDatesDimmed ? "All on" : "All off";
@@ -4394,6 +4909,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
             renderRepOverlay(activeRows);
             renderPositionOverlay(activeRows);
             renderLoadPositionPhaseCharts(activeRows);
+            renderVelocityPositionPhaseCharts(activeRows);
             return;
           }
           const date = button.dataset.date;
@@ -4405,6 +4921,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           renderRepOverlay(activeRows);
           renderPositionOverlay(activeRows);
           renderLoadPositionPhaseCharts(activeRows);
+          renderVelocityPositionPhaseCharts(activeRows);
         });
       });
     }
@@ -4498,6 +5015,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.fillText("seconds from rep start", (box.left + box.right) / 2, height - 22);
 
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const hitItems = [];
       traces.forEach(trace => {
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         const strokeAlpha = isOverlayDateDimmed(trace.date)
@@ -4507,9 +5025,28 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         const lineWidth = state.repOverlayMode === "all"
           ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.3);
-        drawTracePath(ctx, trace, tracePositionValues(trace, positionField), xScale, yScale, strokeStyle, lineWidth);
+        const positionValues = tracePositionValues(trace, positionField);
+        drawTracePath(ctx, trace, positionValues, xScale, yScale, strokeStyle, lineWidth);
+        if (!traceCanBeInspected(trace)) return;
+        positionValues.forEach((value, idx) => {
+          const number = Number(value);
+          const time = Number(trace.timeSec[idx] || 0);
+          if (!Number.isFinite(number) || !Number.isFinite(time)) return;
+          hitItems.push({
+            key: repAnalyticsPointKey(canvas.id, trace, idx, "position-time"),
+            traceKey: repAnalyticsTraceKey(trace),
+            sampleIndex: idx,
+            phase: traceSamplePhase(trace, idx),
+            color,
+            x: xScale(time),
+            y: yScale(number),
+            lines: repAnalyticsTraceLines(trace, idx)
+          });
+        });
       });
       ctx.setLineDash([]);
+      setChartHitAreas(canvas, hitItems);
+      finishRepAnalyticsCanvas(canvas);
 
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
@@ -4525,6 +5062,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     function phaseSegmentsForTrace(trace, phase) {
+      if (phase === "eccentric" && trace.stopAtTop && trace.isFinalRep) return [];
       const positions = tracePositionValues(trace, positionOverlayField());
       const loads = Array.isArray(trace[traceLoadField()]) ? trace[traceLoadField()] : [];
       const count = Math.min(positions.length, loads.length);
@@ -4539,7 +5077,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         const isConcentric = delta > 0.05;
         const isEccentric = delta < -0.05;
         if ((phase === "concentric" && isConcentric) || (phase === "eccentric" && isEccentric)) {
-          segments.push({ trace, p0, p1, l0, l1 });
+          segments.push({ trace, p0, p1, l0, l1, idx0: idx - 1, idx1: idx });
         }
       }
       return segments;
@@ -4604,6 +5142,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
       const dates = [...new Set(traces.map(trace => trace.date))];
       const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const hitItems = [];
       segments.forEach(segment => {
         const trace = segment.trace;
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
@@ -4614,8 +5153,154 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
           : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.2);
         drawPhaseSegment(ctx, segment, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
+        if (!traceCanBeInspected(trace)) return;
+        [
+          { idx: segment.idx0, p: segment.p0, value: segment.l0 },
+          { idx: segment.idx1, p: segment.p1, value: segment.l1 }
+        ].forEach(point => {
+          hitItems.push({
+            key: repAnalyticsPointKey(canvas.id, trace, point.idx, `load-position-${phase}`),
+            traceKey: repAnalyticsTraceKey(trace),
+            sampleIndex: point.idx,
+            phase,
+            color,
+            x: xScale(point.p),
+            y: yScale(point.value),
+            lines: repAnalyticsTraceLines(trace, point.idx)
+          });
+        });
       });
       ctx.setLineDash([]);
+      setChartHitAreas(canvas, hitItems);
+      finishRepAnalyticsCanvas(canvas);
+    }
+
+    function velocityPhaseSegmentsForTrace(trace, phase) {
+      if (phase === "eccentric" && trace.stopAtTop && trace.isFinalRep) return [];
+      const positions = tracePositionValues(trace, positionOverlayField());
+      const velocities = Array.isArray(trace.velocity) ? trace.velocity : [];
+      const count = Math.min(positions.length, velocities.length);
+      const segments = [];
+      for (let idx = 1; idx < count; idx += 1) {
+        const p0 = Number(positions[idx - 1]);
+        const p1 = Number(positions[idx]);
+        const v0 = Number(velocities[idx - 1]);
+        const v1 = Number(velocities[idx]);
+        if (![p0, p1, v0, v1].every(value => Number.isFinite(value))) continue;
+        const delta = p1 - p0;
+        const isConcentric = delta > 0.05;
+        const isEccentric = delta < -0.05;
+        if ((phase === "concentric" && isConcentric) || (phase === "eccentric" && isEccentric)) {
+          segments.push({ trace, p0, p1, v0, v1, idx0: idx - 1, idx1: idx });
+        }
+      }
+      return segments;
+    }
+
+    function drawVelocityPhaseSegment(ctx, segment, xScale, yScale, strokeStyle, lineWidth) {
+      const trace = segment.trace;
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.setLineDash(isEchoMode(trace.mode) ? [6, 4] : []);
+      ctx.beginPath();
+      ctx.moveTo(xScale(segment.p0), yScale(segment.v0));
+      ctx.lineTo(xScale(segment.p1), yScale(segment.v1));
+      ctx.stroke();
+    }
+
+    function drawVelocityPositionPhaseChart(canvas, traces, phase) {
+      const segments = traces.flatMap(trace => velocityPhaseSegmentsForTrace(trace, phase));
+      if (!segments.length) {
+        drawEmpty(
+          canvas,
+          phase === "eccentric"
+            ? "No eccentric velocity-position data found. Stop-at-top reps may omit lowering data."
+            : "No concentric velocity-position data found for this selection."
+        );
+        return;
+      }
+
+      const { ctx, width, height } = canvasSetup(canvas);
+      const box = { left: 62, right: width - 20, top: 18, bottom: height - 46 };
+      const xValues = segments.flatMap(segment => [segment.p0, segment.p1]);
+      const yValues = segments.flatMap(segment => [segment.v0, segment.v1]);
+      const xMinRaw = Math.min(...xValues);
+      const xMaxRaw = Math.max(...xValues);
+      const xPad = Math.max((xMaxRaw - xMinRaw || 1) * 0.08, 1);
+      const xMin = xMinRaw - xPad;
+      const xMax = xMaxRaw + xPad;
+      const yMinRaw = Math.min(...yValues);
+      const yMaxRaw = Math.max(...yValues);
+      const yPad = Math.max((yMaxRaw - yMinRaw || 1) * 0.12, 5);
+      const yMin = yMinRaw - yPad;
+      const yMax = yMaxRaw + yPad;
+      const xScale = phase === "eccentric"
+        ? scaleLinear(xMin, xMax, box.right, box.left)
+        : scaleLinear(xMin, xMax, box.left, box.right);
+      const yScale = scaleLinear(yMin, yMax, box.bottom, box.top);
+      const yTicks = [0, 0.25, 0.5, 0.75, 1].map(part => {
+        const value = yMin + (yMax - yMin) * part;
+        return { y: yScale(value), label: fmtNumber(value, 0) };
+      });
+      drawAxes(ctx, box, yTicks, "velocity (mm/s)");
+
+      if (yMin < 0 && yMax > 0) {
+        ctx.strokeStyle = gridColor();
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(box.left, yScale(0));
+        ctx.lineTo(box.right, yScale(0));
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = mutedColor();
+      ctx.font = "11px Segoe UI, Arial";
+      for (let idx = 0; idx <= 4; idx += 1) {
+        const value = xMin + ((xMax - xMin) * idx / 4);
+        const x = xScale(value);
+        ctx.fillText(fmtNumber(value, 0), x, box.bottom + 12);
+      }
+      ctx.fillText(`${positionOverlayLabel()} position`, (box.left + box.right) / 2, height - 18);
+
+      const dates = [...new Set(traces.map(trace => trace.date))];
+      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const hitItems = [];
+      segments.forEach(segment => {
+        const trace = segment.trace;
+        const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
+        const strokeAlpha = isOverlayDateDimmed(trace.date)
+          ? "82"
+          : "cc";
+        const lineWidth = state.repOverlayMode === "all"
+          ? (isOverlayDateDimmed(trace.date) ? 1.1 : 1.4)
+          : (isOverlayDateDimmed(trace.date) ? 1.4 : 2.2);
+        drawVelocityPhaseSegment(ctx, segment, xScale, yScale, `${color}${strokeAlpha}`, lineWidth);
+        if (!traceCanBeInspected(trace)) return;
+        [
+          { idx: segment.idx0, p: segment.p0, value: segment.v0 },
+          { idx: segment.idx1, p: segment.p1, value: segment.v1 }
+        ].forEach(point => {
+          hitItems.push({
+            key: repAnalyticsPointKey(canvas.id, trace, point.idx, `velocity-position-${phase}`),
+            traceKey: repAnalyticsTraceKey(trace),
+            sampleIndex: point.idx,
+            phase,
+            color,
+            x: xScale(point.p),
+            y: yScale(point.value),
+            lines: repAnalyticsTraceLines(trace, point.idx)
+          });
+        });
+      });
+      ctx.setLineDash([]);
+      setChartHitAreas(canvas, hitItems);
+      finishRepAnalyticsCanvas(canvas);
     }
 
     function renderLoadPositionPhaseCharts(activeRows, selectedTraces = null) {
@@ -4624,6 +5309,14 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
       drawLoadPositionPhaseChart(document.getElementById("concentricLoadPositionChart"), traces, "concentric");
       drawLoadPositionPhaseChart(document.getElementById("eccentricLoadPositionChart"), traces, "eccentric");
+    }
+
+    function renderVelocityPositionPhaseCharts(activeRows, selectedTraces = null) {
+      const traces = selectedTraces || selectedOverlayTraces(activeRows);
+      document.getElementById("velocityPositionNote").textContent =
+        `${positionOverlayLabel()} position versus average cable velocity for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
+      drawVelocityPositionPhaseChart(document.getElementById("concentricVelocityPositionChart"), traces, "concentric");
+      drawVelocityPositionPhaseChart(document.getElementById("eccentricVelocityPositionChart"), traces, "eccentric");
     }
 
     function historyRepEnergy(row, echoMode) {
@@ -4761,10 +5454,13 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       renderMuscleBalance(rows);
       renderMuscleBreakdown(rows);
       const overlayTraces = selectedOverlayTraces(rows);
+      currentRepAnalyticsRows = rows;
+      currentRepAnalyticsOverlayTraces = overlayTraces;
       renderRepEnergyChart(rows, overlayTraces);
       renderRepOverlay(rows, overlayTraces);
       renderPositionOverlay(rows, overlayTraces);
       renderLoadPositionPhaseCharts(rows, overlayTraces);
+      renderVelocityPositionPhaseCharts(rows, overlayTraces);
       renderHistoryTable(rows);
     }
 
@@ -4774,6 +5470,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     });
     setupControls();
     setupChartTooltips();
+    setupRepAnalyticsInspectors();
     setupMuscleBreakdownTooltips();
     render();
     saveDashboardCache();
