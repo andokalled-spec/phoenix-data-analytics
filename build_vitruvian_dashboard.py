@@ -2383,7 +2383,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     let currentRepAnalyticsRows = [];
     let currentRepAnalyticsOverlayTraces = [];
     let activeRepAnalyticsItem = null;
-    let repAnalyticsDragCanvas = null;
+    let resizeRenderTimer = 0;
 
     const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
 
@@ -3631,6 +3631,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     function updateRepAnalyticsInspector(canvas, event) {
+      if (state.activeTab !== "repAnalytics") return false;
       const rect = canvas.getBoundingClientRect();
       const item = nearestChartItem(canvas, event.clientX - rect.left, event.clientY - rect.top, 80);
       if (!item) return false;
@@ -3644,26 +3645,8 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       repAnalyticsCanvasIds.forEach(id => {
         const canvas = document.getElementById(id);
         if (!canvas) return;
-        canvas.addEventListener("pointerdown", event => {
-          if (event.button !== undefined && event.button !== 0) return;
-          if (!updateRepAnalyticsInspector(canvas, event)) return;
-          repAnalyticsDragCanvas = canvas;
-          if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
-          event.preventDefault();
-        });
-        canvas.addEventListener("pointermove", event => {
-          if (repAnalyticsDragCanvas !== canvas) return;
+        canvas.addEventListener("click", event => {
           updateRepAnalyticsInspector(canvas, event);
-          event.preventDefault();
-        });
-        canvas.addEventListener("pointerup", event => {
-          if (repAnalyticsDragCanvas !== canvas) return;
-          updateRepAnalyticsInspector(canvas, event);
-          repAnalyticsDragCanvas = null;
-          if (canvas.releasePointerCapture) canvas.releasePointerCapture(event.pointerId);
-        });
-        canvas.addEventListener("pointercancel", () => {
-          repAnalyticsDragCanvas = null;
         });
       });
     }
@@ -5382,13 +5365,15 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       `).join("");
     }
 
-    function render() {
-      const rows = rowsForExercise();
-      const repsRows = rowsForRepsChart();
-      const volumeRows = rowsForVolumeChart();
+    function renderSourceMeta() {
       const source = DATA.metadata;
       document.getElementById("sourceMeta").textContent =
         `${source.validSessions} valid sessions, ${source.completedSets} completed sets, ${source.repTraces} working rep traces. Exported ${source.exportedAt}.`;
+    }
+
+    function renderSummaryTab(rows) {
+      const repsRows = rowsForRepsChart();
+      const volumeRows = rowsForVolumeChart();
       const windowLabel = state.historyWindow === "all" ? "all workouts" : `last ${state.historyWindow} workouts`;
       document.getElementById("repsChartNote").textContent = isAllExercises()
         ? "Sum of all working reps across all exercises in each workout."
@@ -5452,7 +5437,10 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         }]
       });
       renderMuscleBalance(rows);
-      renderMuscleBreakdown(rows);
+      renderHistoryTable(rows);
+    }
+
+    function renderRepAnalyticsTab(rows) {
       const overlayTraces = selectedOverlayTraces(rows);
       currentRepAnalyticsRows = rows;
       currentRepAnalyticsOverlayTraces = overlayTraces;
@@ -5461,12 +5449,31 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       renderPositionOverlay(rows, overlayTraces);
       renderLoadPositionPhaseCharts(rows, overlayTraces);
       renderVelocityPositionPhaseCharts(rows, overlayTraces);
-      renderHistoryTable(rows);
+    }
+
+    function renderActiveTab(rows) {
+      if (state.activeTab === "summary") {
+        renderSummaryTab(rows);
+      } else if (state.activeTab === "repAnalytics") {
+        renderRepAnalyticsTab(rows);
+      } else if (state.activeTab === "muscleBreakdown") {
+        renderMuscleBreakdown(rows);
+      }
+    }
+
+    function render() {
+      const rows = rowsForExercise();
+      renderSourceMeta();
+      renderActiveTab(rows);
     }
 
     window.addEventListener("resize", () => {
       updateStickyOffsets();
-      render();
+      window.clearTimeout(resizeRenderTimer);
+      resizeRenderTimer = window.setTimeout(() => {
+        resizeRenderTimer = 0;
+        render();
+      }, 120);
     });
     setupControls();
     setupChartTooltips();
