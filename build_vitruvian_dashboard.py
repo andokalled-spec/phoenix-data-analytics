@@ -2058,6 +2058,13 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
                 <option value="echo">Echo</option>
               </select>
             </div>
+            <div class="mini-control">
+              <label for="overlayDateDisplay">Hidden dates</label>
+              <select id="overlayDateDisplay">
+                <option value="greyOut">Grey out</option>
+                <option value="remove">Remove</option>
+              </select>
+            </div>
           </div>
           <div class="legend" id="overlayLegend"></div>
         </div>
@@ -2243,6 +2250,10 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     const LEGACY_CACHE_KEY = "vitruvianTrainingDashboardCache:v1";
     const SETTINGS_CACHE_KEY = "vitruvianTrainingDashboardSettings:v2";
     const DATA_CACHE_KEY = "vitruvianTrainingDashboardData:v2";
+    const DASHBOARD_DB_NAME = "vitruvianTrainingDashboard";
+    const DASHBOARD_DB_STORE = "cache";
+    const DASHBOARD_DB_VERSION = 1;
+    const DASHBOARD_DB_DATA_KEY = "uploadedDashboardData";
     const ALL_EXERCISES_ID = "__all_exercises__";
 
     function validCachedDashboardData(data) {
@@ -2280,8 +2291,9 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
       try {
         const dataRaw = localStorage.getItem(DATA_CACHE_KEY);
-        const data = dataRaw ? validCachedDashboardData(JSON.parse(dataRaw)?.data) : null;
-        if (data) return { data, settings };
+        const dataCache = dataRaw ? JSON.parse(dataRaw) : null;
+        const data = dataCache ? validCachedDashboardData(dataCache.data) : null;
+        if (data) return { data, settings, source: dataCache.source || {} };
       } catch (error) {
         // Fall through to legacy cache migration below.
       }
@@ -2295,6 +2307,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         return {
           data,
           settings: { ...legacySettings, ...settings },
+          source: legacy?.source || {},
           migratedFromLegacy: Boolean(data),
           clearLegacyCache: !data
         };
@@ -2306,6 +2319,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     const cachedDashboard = loadCachedDashboard();
     if (cachedDashboard?.data) DATA = cachedDashboard.data;
     const cachedSettings = cachedDashboard?.settings || {};
+    const cachedSource = cachedDashboard?.source || {};
     const shouldMigrateLegacyDashboardCache = Boolean(cachedDashboard?.migratedFromLegacy);
     const shouldClearLegacyDashboardCache = Boolean(cachedDashboard?.clearLegacyCache);
 
@@ -2319,10 +2333,12 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       showLoadEchoAverage: Boolean(cachedSettings.showLoadEchoAverage),
       repOverlayMode: ["all", "maxAverage", "maxMedian", "maxEnergy"].includes(cachedSettings.repOverlayMode) ? cachedSettings.repOverlayMode : "all",
       repTypeFilter: ["all", "echo", "nonEcho"].includes(cachedSettings.repTypeFilter) ? cachedSettings.repTypeFilter : "all",
+      overlayDateDisplay: ["greyOut", "remove"].includes(cachedSettings.overlayDateDisplay) ? cachedSettings.overlayDateDisplay : "greyOut",
       positionOverlayBasis: ["left", "right", "average"].includes(cachedSettings.positionOverlayBasis) ? cachedSettings.positionOverlayBasis : "average",
       ribbonCollapsed: Boolean(cachedSettings.ribbonCollapsed),
       activeTab: ["summary", "repAnalytics", "muscleBreakdown"].includes(cachedSettings.activeTab) ? cachedSettings.activeTab : "summary",
       filtersCollapsed: Boolean(cachedSettings.filtersCollapsed ?? cachedSettings.summaryFiltersCollapsed ?? cachedSettings.repAnalyticsFiltersCollapsed),
+      uploadedFileName: cachedSettings.uploadedFileName || cachedSettings.sourceFileName || cachedSource.fileName || "",
       selectedBodyMuscleId: "",
       expandedBodyMuscleId: "",
       dimmedOverlayDates: new Set(Array.isArray(cachedSettings.dimmedOverlayDates) ? cachedSettings.dimmedOverlayDates : [])
@@ -2339,32 +2355,97 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         showLoadEchoAverage: state.showLoadEchoAverage,
         repOverlayMode: state.repOverlayMode,
         repTypeFilter: state.repTypeFilter,
+        overlayDateDisplay: state.overlayDateDisplay,
         positionOverlayBasis: state.positionOverlayBasis,
         ribbonCollapsed: state.ribbonCollapsed,
         activeTab: state.activeTab,
         filtersCollapsed: state.filtersCollapsed,
+        uploadedFileName: state.uploadedFileName,
         dimmedOverlayDates: [...state.dimmedOverlayDates]
       };
     }
 
+    function dashboardDataSource() {
+      return {
+        fileName: state.uploadedFileName || "",
+        sourceType: state.uploadedFileName ? "uploaded-file" : "bundled-data"
+      };
+    }
+
+    function openDashboardDb() {
+      if (!("indexedDB" in window)) return Promise.reject(new Error("IndexedDB is not available."));
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DASHBOARD_DB_NAME, DASHBOARD_DB_VERSION);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(DASHBOARD_DB_STORE)) {
+            db.createObjectStore(DASHBOARD_DB_STORE, { keyPath: "key" });
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error("Could not open dashboard cache."));
+      });
+    }
+
+    function readDashboardIndexedDbData() {
+      return openDashboardDb().then(db => new Promise((resolve, reject) => {
+        const transaction = db.transaction(DASHBOARD_DB_STORE, "readonly");
+        const store = transaction.objectStore(DASHBOARD_DB_STORE);
+        const request = store.get(DASHBOARD_DB_DATA_KEY);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error || new Error("Could not read dashboard cache."));
+        transaction.oncomplete = () => db.close();
+        transaction.onerror = () => {
+          db.close();
+          reject(transaction.error || new Error("Could not read dashboard cache."));
+        };
+      }));
+    }
+
+    function writeDashboardIndexedDbData(record) {
+      return openDashboardDb().then(db => new Promise((resolve, reject) => {
+        const transaction = db.transaction(DASHBOARD_DB_STORE, "readwrite");
+        const store = transaction.objectStore(DASHBOARD_DB_STORE);
+        store.put({ key: DASHBOARD_DB_DATA_KEY, ...record });
+        transaction.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        transaction.onerror = () => {
+          db.close();
+          reject(transaction.error || new Error("Could not write dashboard cache."));
+        };
+      }));
+    }
+
     function saveDashboardCache({ includeData = false } = {}) {
+      const savedAt = new Date().toISOString();
       try {
         localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({
           settings: dashboardCacheSettings(),
-          savedAt: new Date().toISOString()
+          savedAt
         }));
       } catch (error) {
         console.warn("Dashboard settings cache could not be saved", error);
       }
       if (!includeData) return;
+      const source = dashboardDataSource();
+      writeDashboardIndexedDbData({
+        data: DATA,
+        source,
+        savedAt
+      }).catch(error => {
+        console.warn("Dashboard IndexedDB cache could not be saved", error);
+      });
       try {
         localStorage.setItem(DATA_CACHE_KEY, JSON.stringify({
           data: DATA,
-          savedAt: new Date().toISOString()
+          source,
+          savedAt
         }));
         localStorage.removeItem(LEGACY_CACHE_KEY);
       } catch (error) {
-        console.warn("Dashboard data cache could not be saved", error);
+        console.warn("Dashboard localStorage data cache could not be saved; IndexedDB cache will be used when available.", error);
       }
     }
 
@@ -2396,6 +2477,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     const loadEchoAverageToggle = document.getElementById("loadEchoAverageToggle");
     const repOverlayMode = document.getElementById("repOverlayMode");
     const repTypeFilter = document.getElementById("repTypeFilter");
+    const overlayDateDisplay = document.getElementById("overlayDateDisplay");
     const positionOverlayBasis = document.getElementById("positionOverlayBasis");
     const muscleBreakdownList = document.getElementById("muscleBreakdownList");
     const bodyMusclesFront = document.getElementById("bodyMusclesFront");
@@ -3413,9 +3495,10 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       }
     }
 
-    function selectBodyMuscle(muscleId, { scroll = true, collapseExpanded = true } = {}) {
+    function selectBodyMuscle(muscleId, { scroll = true, collapseExpanded = true, expand = false } = {}) {
       state.selectedBodyMuscleId = String(muscleId || "");
-      if (collapseExpanded) state.expandedBodyMuscleId = "";
+      if (expand) state.expandedBodyMuscleId = state.selectedBodyMuscleId;
+      else if (collapseExpanded) state.expandedBodyMuscleId = "";
       updateBodyMuscleChartSelection();
       applyMuscleListSelection({ scroll });
     }
@@ -3458,7 +3541,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           bodyState: {},
           ariaLabel: "Front muscle focus body map",
           enableTransitions: true,
-          onMuscleClick: selectBodyMuscle
+          onMuscleClick: muscleId => selectBodyMuscle(muscleId, { scroll: true, expand: true })
         });
       }
       if (!backBodyChart) {
@@ -3467,7 +3550,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           bodyState: {},
           ariaLabel: "Back muscle focus body map",
           enableTransitions: true,
-          onMuscleClick: selectBodyMuscle
+          onMuscleClick: muscleId => selectBodyMuscle(muscleId, { scroll: true, expand: true })
         });
       }
       return true;
@@ -3492,6 +3575,11 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       if (top + rect.height > window.innerHeight - 8) top = event.clientY - rect.height - margin;
       chartTooltip.style.left = `${Math.max(8, left)}px`;
       chartTooltip.style.top = `${Math.max(8, top)}px`;
+    }
+
+    function isInsideChartTarget(target) {
+      if (!(target instanceof Element)) return false;
+      return Boolean(target.closest("canvas"));
     }
 
     function setChartHitAreas(canvas, items) {
@@ -4004,6 +4092,38 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       });
     }
 
+    function updateUploadButtonLabel() {
+      const fileButton = document.querySelector("label[for='backupFileInput'].file-button");
+      if (!fileButton) return;
+      if (state.uploadedFileName) {
+        fileButton.textContent = state.uploadedFileName;
+        fileButton.title = `Cached upload: ${state.uploadedFileName}`;
+      } else if (cachedDashboard?.data) {
+        fileButton.textContent = "Cached data";
+        fileButton.title = "Cached uploaded data";
+      } else {
+        fileButton.textContent = "Load JSON/TXT";
+        fileButton.title = "Load JSON/TXT";
+      }
+    }
+
+    function applyDashboardData(nextData, { fileName = "", resetExercise = false } = {}) {
+      DATA = nextData;
+      dashboardDataVersion += 1;
+      rowsContextCache = null;
+      overlayTracesCache = null;
+      activeRepAnalyticsItem = null;
+      if (fileName) state.uploadedFileName = fileName;
+      if (resetExercise) {
+        state.exerciseId = ALL_EXERCISES_ID;
+        state.dimmedOverlayDates = new Set();
+      }
+      populateExerciseSelect();
+      syncExerciseSelects();
+      updateUploadButtonLabel();
+      render();
+    }
+
     async function loadBackupFile(file) {
       if (!file) return;
       const sourceMeta = document.getElementById("sourceMeta");
@@ -4012,23 +4132,34 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         const text = await file.text();
         const raw = JSON.parse(text);
         const nextData = buildDashboardData(raw);
-        DATA = nextData;
-        dashboardDataVersion += 1;
-        rowsContextCache = null;
-        overlayTracesCache = null;
-        activeRepAnalyticsItem = null;
-        state.exerciseId = ALL_EXERCISES_ID;
-        state.dimmedOverlayDates = new Set();
-        populateExerciseSelect();
-        const fileButton = document.querySelector("label[for='backupFileInput'].file-button");
-        fileButton.textContent = file.name;
-        fileButton.title = file.name;
-        render();
+        applyDashboardData(nextData, { fileName: file.name, resetExercise: true });
         window.setTimeout(() => saveDashboardCache({ includeData: true }), 0);
       } catch (error) {
         sourceMeta.textContent = `Could not load ${file.name}: ${error.message}`;
       } finally {
         backupFileInput.value = "";
+      }
+    }
+
+    async function restoreIndexedDbDashboardData() {
+      if (cachedDashboard?.data) {
+        updateUploadButtonLabel();
+        return;
+      }
+      try {
+        const cached = await readDashboardIndexedDbData();
+        const cachedData = validCachedDashboardData(cached?.data);
+        if (!cachedData) {
+          state.uploadedFileName = "";
+          updateUploadButtonLabel();
+          saveDashboardCache();
+          return;
+        }
+        const fileName = cached?.source?.fileName || state.uploadedFileName || "";
+        applyDashboardData(cachedData, { fileName });
+        saveDashboardCache();
+      } catch (error) {
+        // IndexedDB is optional; localStorage and bundled data remain usable.
       }
     }
 
@@ -4101,16 +4232,13 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       loadEchoAverageToggle.checked = state.showLoadEchoAverage;
       repOverlayMode.value = state.repOverlayMode;
       repTypeFilter.value = state.repTypeFilter;
+      overlayDateDisplay.value = state.overlayDateDisplay;
       positionOverlayBasis.value = state.positionOverlayBasis;
       applyRibbonState();
       applyDashboardTabState();
       applyFilterCollapseState();
       applyTheme();
-      if (cachedDashboard?.data) {
-        const fileButton = document.querySelector("label[for='backupFileInput'].file-button");
-        fileButton.textContent = "Cached data";
-        fileButton.title = "Cached data";
-      }
+      updateUploadButtonLabel();
       ribbonToggle.addEventListener("click", () => {
         ribbonAutoCollapsePausedUntil = Date.now() + 450;
         state.ribbonCollapsed = !state.ribbonCollapsed;
@@ -4141,6 +4269,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         activateMuscleListRow(row);
       });
       document.addEventListener("click", event => {
+        if (!isInsideChartTarget(event.target)) hideChartTooltip();
         if (isInsideMuscleBreakdownTarget(event.target)) return;
         clearBodyMuscleSelection();
       });
@@ -4210,6 +4339,11 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       });
       repTypeFilter.addEventListener("change", () => {
         state.repTypeFilter = repTypeFilter.value;
+        saveDashboardCache();
+        render();
+      });
+      overlayDateDisplay.addEventListener("change", () => {
+        state.overlayDateDisplay = overlayDateDisplay.value;
         saveDashboardCache();
         render();
       });
@@ -4896,6 +5030,31 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       return !isOverlayDateDimmed(trace.date);
     }
 
+    function hiddenDatesAreRemoved() {
+      return state.overlayDateDisplay === "remove";
+    }
+
+    function plottedOverlayTraces(traces) {
+      return hiddenDatesAreRemoved()
+        ? traces.filter(trace => !isOverlayDateDimmed(trace.date))
+        : traces;
+    }
+
+    function overlayDateDisplayNote() {
+      return hiddenDatesAreRemoved()
+        ? " Hidden dates are removed and chart scales refocus on the remaining traces."
+        : " Hidden dates are greyed out.";
+    }
+
+    function allHiddenOverlayMessage(kind = "traces") {
+      return `All selected dates are hidden. Turn dates on to show ${kind}.`;
+    }
+
+    function overlayDateColors(traces) {
+      const dates = [...new Set(traces.map(trace => trace.date))];
+      return new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+    }
+
     function overlayRankField() {
       if (state.repOverlayMode === "maxAverage") {
         return state.loadBasis === "total" ? "avgTotalLoadKg" : "avgPerCableLoadKg";
@@ -5005,7 +5164,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         legend.innerHTML = "";
         return;
       }
-      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const dateColors = overlayDateColors(traces);
       const allDatesDimmed = dates.every(date => isOverlayDateDimmed(date));
       const toggleAllLabel = allDatesDimmed ? "All on" : "All off";
       legend.innerHTML = `
@@ -5038,19 +5197,23 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
     function renderRepEnergyChart(activeRows, selectedTraces = null) {
       const canvas = document.getElementById("repEnergyChart");
-      const traces = (selectedTraces || selectedOverlayTraces(activeRows))
+      const sourceTraces = (selectedTraces || selectedOverlayTraces(activeRows))
         .map(trace => ({ ...trace, energyJ: Number(trace.totalEnergyJ) }))
         .filter(trace => Number.isFinite(trace.energyJ))
         .sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime) || Number(a.repIndex || 0) - Number(b.repIndex || 0));
+      const traces = plottedOverlayTraces(sourceTraces);
       document.getElementById("repEnergyNote").textContent =
-        `${overlayModeLabel()} energy per selected ${repTypeFilterLabel().toLowerCase()} over workout time. Bars use workout date colours.`;
-      if (!traces.length) {
+        `${overlayModeLabel()} energy per selected ${repTypeFilterLabel().toLowerCase()} over workout time. Bars use workout date colours.${overlayDateDisplayNote()}`;
+      if (!sourceTraces.length) {
         drawEmpty(canvas, "No rep energy values were detected for this selection.");
         return;
       }
+      if (!traces.length) {
+        drawEmpty(canvas, allHiddenOverlayMessage("rep energy bars"));
+        return;
+      }
 
-      const dates = [...new Set(traces.map(trace => trace.date))];
-      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const dateColors = overlayDateColors(sourceTraces);
       const { ctx, width, height } = canvasSetup(canvas);
       const box = { left: 62, right: width - 22, top: 18, bottom: height - 52 };
       const energyValues = traces.map(trace => trace.energyJ);
@@ -5120,18 +5283,21 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
     function renderRepOverlay(activeRows, selectedTraces = null) {
       const canvas = document.getElementById("repOverlay");
-      const traces = selectedTraces || selectedOverlayTraces(activeRows);
+      const sourceTraces = selectedTraces || selectedOverlayTraces(activeRows);
+      const traces = plottedOverlayTraces(sourceTraces);
       document.getElementById("repOverlayNote").textContent =
         state.repOverlayMode === "all"
-          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.`
-          : `${overlayModeLabel()} shows the ${maxRepTypeDescription()} for each selected workout date. Echo traces are dashed.`;
-      if (!traces.length) {
+          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.${overlayDateDisplayNote()}`
+          : `${overlayModeLabel()} shows the ${maxRepTypeDescription()} for each selected workout date. Echo traces are dashed.${overlayDateDisplayNote()}`;
+      if (!sourceTraces.length) {
         drawEmpty(canvas, "No working rep traces were detected for this selection.");
-        document.getElementById("overlayLegend").innerHTML = "";
+        return;
+      }
+      if (!traces.length) {
+        drawEmpty(canvas, allHiddenOverlayMessage("load traces"));
         return;
       }
 
-      const dates = [...new Set(traces.map(trace => trace.date))];
       const { ctx, width, height } = canvasSetup(canvas);
       const box = { left: 62, right: width - 22, top: 20, bottom: height - 46 };
       const loadKey = traceLoadField();
@@ -5153,7 +5319,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.font = "12px Segoe UI, Arial";
       ctx.fillText("seconds from rep start", (box.left + box.right) / 2, height - 22);
 
-      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const dateColors = overlayDateColors(sourceTraces);
       traces.forEach(trace => {
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         const strokeAlpha = isOverlayDateDimmed(trace.date)
@@ -5223,19 +5389,23 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
     function renderPositionOverlay(activeRows, selectedTraces = null) {
       const canvas = document.getElementById("positionOverlay");
-      const traces = selectedTraces || selectedOverlayTraces(activeRows);
+      const sourceTraces = selectedTraces || selectedOverlayTraces(activeRows);
+      const traces = plottedOverlayTraces(sourceTraces);
       const positionField = positionOverlayField();
       const positionLabel = positionOverlayLabel();
       document.getElementById("positionOverlayNote").textContent =
         state.repOverlayMode === "all"
-          ? `${positionLabel} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.`
-          : `${overlayModeLabel()} uses the same ${maxRepTypeDescription()} as the load overlay; ${positionLabel.toLowerCase()} position is shown. Echo traces are dashed.`;
-      if (!traces.length) {
+          ? `${positionLabel} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.${overlayDateDisplayNote()}`
+          : `${overlayModeLabel()} uses the same ${maxRepTypeDescription()} as the load overlay; ${positionLabel.toLowerCase()} position is shown. Echo traces are dashed.${overlayDateDisplayNote()}`;
+      if (!sourceTraces.length) {
         drawEmpty(canvas, "No working rep positions were detected for this selection.");
         return;
       }
+      if (!traces.length) {
+        drawEmpty(canvas, allHiddenOverlayMessage("position traces"));
+        return;
+      }
 
-      const dates = [...new Set(traces.map(trace => trace.date))];
       const { ctx, width, height } = canvasSetup(canvas);
       const box = { left: 62, right: width - 22, top: 34, bottom: height - 46 };
       const maxTime = Math.max(...traces.flatMap(trace => trace.timeSec), 1);
@@ -5266,7 +5436,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.font = "12px Segoe UI, Arial";
       ctx.fillText("seconds from rep start", (box.left + box.right) / 2, height - 22);
 
-      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
+      const dateColors = overlayDateColors(sourceTraces);
       traces.forEach(trace => {
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
         const strokeAlpha = isOverlayDateDimmed(trace.date)
@@ -5340,7 +5510,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.stroke();
     }
 
-    function drawLoadPositionPhaseChart(canvas, traces, phase) {
+    function drawLoadPositionPhaseChart(canvas, traces, phase, dateColors = overlayDateColors(traces)) {
       const segments = traces.flatMap(trace => phaseSegmentsForTrace(trace, phase));
       if (!segments.length) {
         drawEmpty(
@@ -5384,8 +5554,6 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       }
       ctx.fillText(`${positionOverlayLabel()} position`, (box.left + box.right) / 2, height - 18);
 
-      const dates = [...new Set(traces.map(trace => trace.date))];
-      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
       segments.forEach(segment => {
         const trace = segment.trace;
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
@@ -5449,7 +5617,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.stroke();
     }
 
-    function drawVelocityPositionPhaseChart(canvas, traces, phase) {
+    function drawVelocityPositionPhaseChart(canvas, traces, phase, dateColors = overlayDateColors(traces)) {
       const segments = traces.flatMap(trace => velocityPhaseSegmentsForTrace(trace, phase));
       if (!segments.length) {
         drawEmpty(
@@ -5507,8 +5675,6 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       }
       ctx.fillText(`${positionOverlayLabel()} position`, (box.left + box.right) / 2, height - 18);
 
-      const dates = [...new Set(traces.map(trace => trace.date))];
-      const dateColors = new Map(dates.map((date, idx) => [date, palette[idx % palette.length]]));
       segments.forEach(segment => {
         const trace = segment.trace;
         const color = isOverlayDateDimmed(trace.date) ? "#9ca3af" : (dateColors.get(trace.date) || "#2563eb");
@@ -5538,19 +5704,33 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     function renderLoadPositionPhaseCharts(activeRows, selectedTraces = null) {
-      const traces = selectedTraces || selectedOverlayTraces(activeRows);
+      const sourceTraces = selectedTraces || selectedOverlayTraces(activeRows);
+      const traces = plottedOverlayTraces(sourceTraces);
+      const dateColors = overlayDateColors(sourceTraces);
       document.getElementById("loadPositionNote").textContent =
-        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
-      drawLoadPositionPhaseChart(document.getElementById("concentricLoadPositionChart"), traces, "concentric");
-      drawLoadPositionPhaseChart(document.getElementById("eccentricLoadPositionChart"), traces, "eccentric");
+        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.${overlayDateDisplayNote()}`;
+      if (sourceTraces.length && !traces.length) {
+        drawEmpty(document.getElementById("concentricLoadPositionChart"), allHiddenOverlayMessage("load-position traces"));
+        drawEmpty(document.getElementById("eccentricLoadPositionChart"), allHiddenOverlayMessage("load-position traces"));
+        return;
+      }
+      drawLoadPositionPhaseChart(document.getElementById("concentricLoadPositionChart"), traces, "concentric", dateColors);
+      drawLoadPositionPhaseChart(document.getElementById("eccentricLoadPositionChart"), traces, "eccentric", dateColors);
     }
 
     function renderVelocityPositionPhaseCharts(activeRows, selectedTraces = null) {
-      const traces = selectedTraces || selectedOverlayTraces(activeRows);
+      const sourceTraces = selectedTraces || selectedOverlayTraces(activeRows);
+      const traces = plottedOverlayTraces(sourceTraces);
+      const dateColors = overlayDateColors(sourceTraces);
       document.getElementById("velocityPositionNote").textContent =
-        `${positionOverlayLabel()} position versus average cable velocity for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
-      drawVelocityPositionPhaseChart(document.getElementById("concentricVelocityPositionChart"), traces, "concentric");
-      drawVelocityPositionPhaseChart(document.getElementById("eccentricVelocityPositionChart"), traces, "eccentric");
+        `${positionOverlayLabel()} position versus average cable velocity for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.${overlayDateDisplayNote()}`;
+      if (sourceTraces.length && !traces.length) {
+        drawEmpty(document.getElementById("concentricVelocityPositionChart"), allHiddenOverlayMessage("velocity-position traces"));
+        drawEmpty(document.getElementById("eccentricVelocityPositionChart"), allHiddenOverlayMessage("velocity-position traces"));
+        return;
+      }
+      drawVelocityPositionPhaseChart(document.getElementById("concentricVelocityPositionChart"), traces, "concentric", dateColors);
+      drawVelocityPositionPhaseChart(document.getElementById("eccentricVelocityPositionChart"), traces, "eccentric", dateColors);
     }
 
     function historyRepEnergy(row, echoMode) {
@@ -5751,18 +5931,18 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     function updateRepAnalyticsNotes() {
       document.getElementById("repOverlayNote").textContent =
         state.repOverlayMode === "all"
-          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.`
-          : `${overlayModeLabel()} shows the ${maxRepTypeDescription()} for each selected workout date. Echo traces are dashed.`;
+          ? `Load over time for ${repTypeFilterLabel().toLowerCase()}. Colours identify the workout date. Echo traces are dashed.${overlayDateDisplayNote()}`
+          : `${overlayModeLabel()} shows the ${maxRepTypeDescription()} for each selected workout date. Echo traces are dashed.${overlayDateDisplayNote()}`;
       document.getElementById("positionOverlayNote").textContent =
         state.repOverlayMode === "all"
-          ? `${positionOverlayLabel()} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.`
-          : `${overlayModeLabel()} uses the same ${maxRepTypeDescription()} as the load overlay; ${positionOverlayLabel().toLowerCase()} position is shown. Echo traces are dashed.`;
+          ? `${positionOverlayLabel()} position over time for ${repTypeFilterLabel().toLowerCase()}. Echo traces are dashed.${overlayDateDisplayNote()}`
+          : `${overlayModeLabel()} uses the same ${maxRepTypeDescription()} as the load overlay; ${positionOverlayLabel().toLowerCase()} position is shown. Echo traces are dashed.${overlayDateDisplayNote()}`;
       document.getElementById("loadPositionNote").textContent =
-        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
+        `${positionOverlayLabel()} position versus ${loadUnitLabel()} for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.${overlayDateDisplayNote()}`;
       document.getElementById("velocityPositionNote").textContent =
-        `${positionOverlayLabel()} position versus average cable velocity for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.`;
+        `${positionOverlayLabel()} position versus average cable velocity for the same ${repTypeFilterLabel().toLowerCase()} shown in the load overlay. Eccentric may be empty when stop-at-top removes lowering data.${overlayDateDisplayNote()}`;
       document.getElementById("repEnergyNote").textContent =
-        `${overlayModeLabel()} energy per selected ${repTypeFilterLabel().toLowerCase()} over workout time. Bars use workout date colours.`;
+        `${overlayModeLabel()} energy per selected ${repTypeFilterLabel().toLowerCase()} over workout time. Bars use workout date colours.${overlayDateDisplayNote()}`;
     }
 
     function renderRepAnalyticsTab(rows) {
@@ -5821,6 +6001,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     setupMuscleBreakdownTooltips();
     render();
     saveDashboardCache();
+    restoreIndexedDbDashboardData();
     if (shouldMigrateLegacyDashboardCache) {
       window.setTimeout(() => saveDashboardCache({ includeData: true }), 500);
     } else if (shouldClearLegacyDashboardCache) {
