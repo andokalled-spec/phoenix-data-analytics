@@ -912,7 +912,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
     .controls {
       display: grid;
-      grid-template-columns: minmax(170px, 210px) minmax(430px, 1fr);
+      grid-template-columns: minmax(170px, 210px) minmax(280px, 360px) minmax(430px, 1fr);
       gap: 10px;
       align-items: stretch;
       justify-content: end;
@@ -934,6 +934,51 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
 
     .file-control {
       align-content: stretch;
+    }
+
+    .fit-control {
+      align-content: stretch;
+    }
+
+    .fit-export-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(92px, 118px);
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .action-button {
+      min-height: 38px;
+      border: 1px solid #0f766e;
+      border-radius: 6px;
+      background: #0f766e;
+      color: #fff;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .action-button:hover {
+      background: #0d9488;
+      border-color: #2dd4bf;
+    }
+
+    .action-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .fit-export-note {
+      min-height: 16px;
+      margin: 0;
+      color: #cbd5e1;
+      font-size: 11px;
+      line-height: 1.25;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .switch-control {
@@ -1813,7 +1858,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     @media (max-width: 1000px) {
       .header-inner { grid-template-columns: 1fr; }
       .controls {
-        grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+        grid-template-columns: minmax(170px, 220px) minmax(260px, 1fr);
         justify-content: stretch;
       }
       .kpis { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
@@ -1848,6 +1893,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       .summary-filter-panel .filter-controls { grid-template-columns: 1fr; }
       canvas, #repOverlay, #positionOverlay { height: 300px; }
       .controls,
+      .fit-export-row,
       .switch-grid { grid-template-columns: 1fr; }
       .control { width: 100%; }
       .switch-row { white-space: normal; }
@@ -1870,6 +1916,14 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           <label for="backupFileInput">Upload File</label>
           <label class="file-button" for="backupFileInput" title="Load JSON/TXT">Load JSON/TXT</label>
           <input class="file-input" id="backupFileInput" type="file" accept=".json,.txt,application/json,text/plain">
+        </div>
+        <div class="control banner-control fit-control">
+          <label for="fitWorkoutSelect">Watch FIT</label>
+          <div class="fit-export-row">
+            <select id="fitWorkoutSelect" title="Workout to export as a structured FIT file"></select>
+            <button class="action-button" id="fitDownloadButton" type="button">Create FIT</button>
+          </div>
+          <p class="fit-export-note" id="fitExportNote">Select a workout from the loaded backup.</p>
         </div>
         <div class="control banner-control switch-control">
           <div class="switch-grid">
@@ -1974,6 +2028,16 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           </div>
         </div>
         <canvas id="volumeChart"></canvas>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Total Energy Per Day</h2>
+            <p class="panel-note" id="energyChartNote">Total estimated work from completed working reps per day.</p>
+          </div>
+        </div>
+        <canvas id="energyChart"></canvas>
       </article>
 
       <article class="panel">
@@ -2277,6 +2341,27 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         : null;
     }
 
+    function cachedUploadTextFromRecord(record) {
+      return typeof record?.uploadText === "string"
+        ? record.uploadText
+        : (typeof record?.fileText === "string" ? record.fileText : "");
+    }
+
+    function dashboardDataFromUploadText(text) {
+      if (typeof text !== "string" || !text.trim()) return null;
+      try {
+        return buildDashboardData(JSON.parse(text));
+      } catch (error) {
+        console.warn("Cached uploaded file could not be parsed", error);
+        return null;
+      }
+    }
+
+    function cacheTimeValue(value) {
+      const time = Date.parse(value || "");
+      return Number.isFinite(time) ? time : 0;
+    }
+
     function loadCachedDashboard() {
       let settings = {};
       try {
@@ -2292,8 +2377,11 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       try {
         const dataRaw = localStorage.getItem(DATA_CACHE_KEY);
         const dataCache = dataRaw ? JSON.parse(dataRaw) : null;
-        const data = dataCache ? validCachedDashboardData(dataCache.data) : null;
-        if (data) return { data, settings, source: dataCache.source || {} };
+        const uploadText = cachedUploadTextFromRecord(dataCache);
+        const data = dataCache
+          ? (validCachedDashboardData(dataCache.data) || dashboardDataFromUploadText(uploadText))
+          : null;
+        if (data) return { data, settings, source: dataCache.source || {}, uploadText, savedAt: dataCache.savedAt || "" };
       } catch (error) {
         // Fall through to legacy cache migration below.
       }
@@ -2303,11 +2391,14 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         if (!legacyRaw) return { settings };
         const legacy = JSON.parse(legacyRaw);
         const legacySettings = legacy?.settings || {};
-        const data = validCachedDashboardData(legacy?.data);
+        const uploadText = cachedUploadTextFromRecord(legacy);
+        const data = validCachedDashboardData(legacy?.data) || dashboardDataFromUploadText(uploadText);
         return {
           data,
           settings: { ...legacySettings, ...settings },
           source: legacy?.source || {},
+          uploadText,
+          savedAt: legacy?.savedAt || "",
           migratedFromLegacy: Boolean(data),
           clearLegacyCache: !data
         };
@@ -2338,11 +2429,13 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ribbonCollapsed: Boolean(cachedSettings.ribbonCollapsed),
       activeTab: ["summary", "repAnalytics", "muscleBreakdown"].includes(cachedSettings.activeTab) ? cachedSettings.activeTab : "summary",
       filtersCollapsed: Boolean(cachedSettings.filtersCollapsed ?? cachedSettings.summaryFiltersCollapsed ?? cachedSettings.repAnalyticsFiltersCollapsed),
+      fitWorkoutId: cachedSettings.fitWorkoutId || "",
       uploadedFileName: cachedSettings.uploadedFileName || cachedSettings.sourceFileName || cachedSource.fileName || "",
       selectedBodyMuscleId: "",
       expandedBodyMuscleId: "",
       dimmedOverlayDates: new Set(Array.isArray(cachedSettings.dimmedOverlayDates) ? cachedSettings.dimmedOverlayDates : [])
     };
+    let cachedUploadText = cachedDashboard?.uploadText || "";
 
     function dashboardCacheSettings() {
       return {
@@ -2360,6 +2453,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         ribbonCollapsed: state.ribbonCollapsed,
         activeTab: state.activeTab,
         filtersCollapsed: state.filtersCollapsed,
+        fitWorkoutId: state.fitWorkoutId,
         uploadedFileName: state.uploadedFileName,
         dimmedOverlayDates: [...state.dimmedOverlayDates]
       };
@@ -2428,10 +2522,11 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       } catch (error) {
         console.warn("Dashboard settings cache could not be saved", error);
       }
-      if (!includeData) return;
+      if (!includeData) return Promise.resolve();
       const source = dashboardDataSource();
-      writeDashboardIndexedDbData({
+      const indexedDbWrite = writeDashboardIndexedDbData({
         data: DATA,
+        uploadText: cachedUploadText,
         source,
         savedAt
       }).catch(error => {
@@ -2447,6 +2542,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       } catch (error) {
         console.warn("Dashboard localStorage data cache could not be saved; IndexedDB cache will be used when available.", error);
       }
+      return indexedDbWrite;
     }
 
     const topRibbon = document.getElementById("topRibbon");
@@ -2467,6 +2563,9 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     const repExerciseSelect = document.getElementById("repExerciseSelect");
     const muscleExerciseSelect = document.getElementById("muscleExerciseSelect");
     const backupFileInput = document.getElementById("backupFileInput");
+    const fitWorkoutSelect = document.getElementById("fitWorkoutSelect");
+    const fitDownloadButton = document.getElementById("fitDownloadButton");
+    const fitExportNote = document.getElementById("fitExportNote");
     const summaryHistoryWindow = document.getElementById("summaryHistoryWindow");
     const repHistoryWindow = document.getElementById("repHistoryWindow");
     const muscleHistoryWindow = document.getElementById("muscleHistoryWindow");
@@ -3420,6 +3519,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           if (!contributionRows.has(id)) contributionRows.set(id, []);
           contributionRows.get(id).push({
             date: row.localDate || "",
+            timestamp: asNumber(row.timestamp, 0),
             label: row.label || row.localDate || "",
             exerciseName: row.exerciseName || "Unknown",
             sets: asInt(row.sets),
@@ -3447,7 +3547,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
               shareOfMuscle: value ? entry.allocatedVolumeKg / value : 0
             }))
             .sort((a, b) =>
-              b.allocatedVolumeKg - a.allocatedVolumeKg ||
+              Number(b.timestamp || 0) - Number(a.timestamp || 0) ||
               String(b.date).localeCompare(String(a.date)) ||
               a.exerciseName.localeCompare(b.exerciseName)
             )
@@ -3974,7 +4074,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     function setupChartTooltips() {
-      ["repsChart", "loadChart", "volumeChart", "velocityChart", "muscleBalanceChart", "repEnergyChart"].forEach(id => {
+      ["repsChart", "loadChart", "volumeChart", "energyChart", "velocityChart", "muscleBalanceChart", "repEnergyChart"].forEach(id => {
         const canvas = document.getElementById(id);
         if (!canvas) return;
         canvas.addEventListener("mousemove", event => {
@@ -4107,6 +4207,322 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       }
     }
 
+    function fitWorkoutGroups() {
+      const groups = new Map();
+      (DATA.sessions || []).forEach(session => {
+        if (asInt(session.workingReps || session.totalReps) <= 0) return;
+        const workoutId = session.routineSessionId || session.id;
+        if (!workoutId) return;
+        if (!groups.has(workoutId)) {
+          groups.set(workoutId, {
+            id: workoutId,
+            timestamp: asNumber(session.timestamp, 0),
+            localDate: session.localDate || "",
+            label: session.label || session.localDate || "",
+            routineName: session.routineName || "Vitruvian Workout",
+            sessions: []
+          });
+        }
+        const group = groups.get(workoutId);
+        group.timestamp = Math.min(group.timestamp || asNumber(session.timestamp, 0), asNumber(session.timestamp, 0));
+        group.sessions.push(session);
+      });
+      return [...groups.values()]
+        .map(group => {
+          const exercises = new Set(group.sessions.map(session => session.exerciseName || "Unknown"));
+          const setCount = group.sessions.length;
+          const repCount = group.sessions.reduce((sum, session) => sum + asInt(session.workingReps || session.totalReps), 0);
+          return {
+            ...group,
+            sessions: group.sessions.sort((a, b) => asNumber(a.timestamp, 0) - asNumber(b.timestamp, 0)),
+            exerciseCount: exercises.size,
+            setCount,
+            repCount,
+            optionLabel: `${group.localDate || group.label} - ${group.routineName || "Vitruvian Workout"} (${setCount} set${setCount === 1 ? "" : "s"})`
+          };
+        })
+        .sort((a, b) => b.timestamp - a.timestamp || a.routineName.localeCompare(b.routineName));
+    }
+
+    function selectedFitWorkoutGroup() {
+      const groups = fitWorkoutGroups();
+      return groups.find(group => group.id === state.fitWorkoutId) || groups[0] || null;
+    }
+
+    function populateFitWorkoutSelect() {
+      const groups = fitWorkoutGroups();
+      if (!groups.length) {
+        fitWorkoutSelect.innerHTML = `<option value="">No workouts</option>`;
+        fitWorkoutSelect.disabled = true;
+        fitDownloadButton.disabled = true;
+        fitExportNote.textContent = "Upload a Vitruvian backup to export a structured workout.";
+        return;
+      }
+      if (!groups.some(group => group.id === state.fitWorkoutId)) state.fitWorkoutId = groups[0].id;
+      fitWorkoutSelect.innerHTML = groups
+        .map(group => `<option value="${escapeHtml(group.id)}">${escapeHtml(group.optionLabel)}</option>`)
+        .join("");
+      fitWorkoutSelect.value = state.fitWorkoutId;
+      fitWorkoutSelect.disabled = false;
+      fitDownloadButton.disabled = false;
+      const group = selectedFitWorkoutGroup();
+      fitExportNote.textContent = group
+        ? `${group.setCount} set${group.setCount === 1 ? "" : "s"}, ${group.repCount} reps, ${group.exerciseCount} exercise${group.exerciseCount === 1 ? "" : "s"}.`
+        : "Select a workout from the loaded backup.";
+    }
+
+    function fitAscii(value, maxLength) {
+      return String(value || "")
+        .replace(/[^\x20-\x7E]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, Math.max(0, maxLength));
+    }
+
+    function fitSafeFileName(value) {
+      return fitAscii(value, 80)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "vitruvian-workout";
+    }
+
+    function fitDateTimeSeconds(date = new Date()) {
+      const FIT_EPOCH_UNIX_SECONDS = 631065600;
+      return Math.max(0, Math.floor(date.getTime() / 1000) - FIT_EPOCH_UNIX_SECONDS);
+    }
+
+    function fitCrc(bytes, crc = 0) {
+      const table = [
+        0x0000, 0xcc01, 0xd801, 0x1400,
+        0xf001, 0x3c00, 0x2800, 0xe401,
+        0xa001, 0x6c00, 0x7800, 0xb401,
+        0x5000, 0x9c01, 0x8801, 0x4400
+      ];
+      let next = crc & 0xffff;
+      bytes.forEach(byte => {
+        let tmp = table[next & 0x0f];
+        next = ((next >> 4) & 0x0fff) ^ tmp ^ table[byte & 0x0f];
+        tmp = table[next & 0x0f];
+        next = ((next >> 4) & 0x0fff) ^ tmp ^ table[(byte >> 4) & 0x0f];
+      });
+      return next & 0xffff;
+    }
+
+    function pushFitU16(bytes, value) {
+      const number = Math.max(0, Math.min(0xffff, Math.trunc(Number(value) || 0)));
+      bytes.push(number & 0xff, (number >> 8) & 0xff);
+    }
+
+    function pushFitU32(bytes, value) {
+      const number = Math.max(0, Math.min(0xffffffff, Math.trunc(Number(value) || 0))) >>> 0;
+      bytes.push(number & 0xff, (number >>> 8) & 0xff, (number >>> 16) & 0xff, (number >>> 24) & 0xff);
+    }
+
+    function pushFitString(bytes, value, size) {
+      const text = fitAscii(value, size - 1);
+      for (let idx = 0; idx < size; idx += 1) {
+        bytes.push(idx < text.length ? text.charCodeAt(idx) : 0);
+      }
+    }
+
+    function pushFitField(bytes, field, value) {
+      if (field.kind === "string") {
+        pushFitString(bytes, value, field.size);
+      } else if (field.size === 1) {
+        bytes.push(Math.max(0, Math.min(0xff, Math.trunc(Number(value) || 0))));
+      } else if (field.size === 2) {
+        pushFitU16(bytes, value);
+      } else if (field.size === 4) {
+        pushFitU32(bytes, value);
+      }
+    }
+
+    function fitWriter() {
+      const bytes = [];
+      return {
+        bytes,
+        define(localMessage, globalMessage, fields) {
+          bytes.push(0x40 | (localMessage & 0x0f), 0, 0);
+          pushFitU16(bytes, globalMessage);
+          bytes.push(fields.length);
+          fields.forEach(field => bytes.push(field.num, field.size, field.base));
+        },
+        data(localMessage, fields, values) {
+          bytes.push(localMessage & 0x0f);
+          fields.forEach(field => pushFitField(bytes, field, values[field.key]));
+        }
+      };
+    }
+
+    function fitWorkoutStepsForGroup(group) {
+      const exerciseNameIds = new Map();
+      const steps = group.sessions.map((session, idx) => {
+        const exerciseName = cleanName(session.exerciseName);
+        const exerciseKey = normalizeExerciseName(exerciseName) || exerciseName.toLowerCase();
+        if (!exerciseNameIds.has(exerciseKey)) exerciseNameIds.set(exerciseKey, exerciseNameIds.size);
+        const exerciseNameId = exerciseNameIds.get(exerciseKey);
+        const reps = Math.max(1, asInt(session.workingReps || session.totalReps, 1));
+        const perCableKg = asNumber(session.weightPerCableKg, 0);
+        const totalLoadKg = asNumber(session.totalLoadKg, perCableKg * Math.max(1, asInt(session.cableCount, 1)));
+        const modeText = session.mode ? ` | ${fitAscii(session.mode, 18)}` : "";
+        const note = [
+          `${reps} reps`,
+          `${fmtNumber(displayLoadValue(perCableKg), 1)} ${loadUnitText()}/cable`,
+          `${fmtNumber(displayLoadValue(totalLoadKg), 1)} ${loadUnitText()} total${modeText}`
+        ].join(" | ");
+        return {
+          messageIndex: idx,
+          exerciseNameId,
+          exerciseName,
+          stepName: exerciseName,
+          reps,
+          totalLoadKg,
+          note,
+          exerciseWeight: Math.max(0, Math.min(0xfffe, Math.round(totalLoadKg * 100)))
+        };
+      });
+      const titles = [...exerciseNameIds.entries()].map(([exerciseKey, exerciseNameId]) => {
+        const step = steps.find(item => item.exerciseNameId === exerciseNameId);
+        return {
+          messageIndex: exerciseNameId,
+          exerciseNameId,
+          exerciseName: step?.exerciseName || exerciseKey
+        };
+      });
+      return { steps, titles };
+    }
+
+    function buildFitWorkoutFile(group) {
+      if (!group?.sessions?.length) throw new Error("No workout rows were found for the selected workout.");
+      const { steps, titles } = fitWorkoutStepsForGroup(group);
+      if (!steps.length) throw new Error("No working-rep steps were found for the selected workout.");
+
+      const BASE = { ENUM: 0x00, UINT8: 0x02, STRING: 0x07, UINT16: 0x84, UINT32: 0x86, UINT32Z: 0x8c };
+      const fileIdFields = [
+        { key: "type", num: 0, size: 1, base: BASE.ENUM },
+        { key: "manufacturer", num: 1, size: 2, base: BASE.UINT16 },
+        { key: "product", num: 2, size: 2, base: BASE.UINT16 },
+        { key: "serialNumber", num: 3, size: 4, base: BASE.UINT32Z },
+        { key: "timeCreated", num: 4, size: 4, base: BASE.UINT32 }
+      ];
+      const workoutFields = [
+        { key: "sport", num: 4, size: 1, base: BASE.ENUM },
+        { key: "numValidSteps", num: 6, size: 2, base: BASE.UINT16 },
+        { key: "workoutName", num: 8, size: 40, base: BASE.STRING, kind: "string" },
+        { key: "subSport", num: 11, size: 1, base: BASE.ENUM }
+      ];
+      const workoutStepFields = [
+        { key: "messageIndex", num: 254, size: 2, base: BASE.UINT16 },
+        { key: "stepName", num: 0, size: 36, base: BASE.STRING, kind: "string" },
+        { key: "durationType", num: 1, size: 1, base: BASE.ENUM },
+        { key: "durationValue", num: 2, size: 4, base: BASE.UINT32 },
+        { key: "targetType", num: 3, size: 1, base: BASE.ENUM },
+        { key: "targetValue", num: 4, size: 4, base: BASE.UINT32 },
+        { key: "intensity", num: 7, size: 1, base: BASE.ENUM },
+        { key: "notes", num: 8, size: 96, base: BASE.STRING, kind: "string" },
+        { key: "exerciseCategory", num: 10, size: 2, base: BASE.UINT16 },
+        { key: "exerciseNameId", num: 11, size: 2, base: BASE.UINT16 },
+        { key: "exerciseWeight", num: 12, size: 2, base: BASE.UINT16 }
+      ];
+      const exerciseTitleFields = [
+        { key: "messageIndex", num: 254, size: 2, base: BASE.UINT16 },
+        { key: "exerciseCategory", num: 0, size: 2, base: BASE.UINT16 },
+        { key: "exerciseNameId", num: 1, size: 2, base: BASE.UINT16 },
+        { key: "exerciseName", num: 2, size: 36, base: BASE.STRING, kind: "string" }
+      ];
+
+      const writer = fitWriter();
+      const now = new Date();
+      const workoutName = `${group.routineName || "Vitruvian"} ${group.localDate || ""}`.trim();
+      writer.define(0, 0, fileIdFields);
+      writer.data(0, fileIdFields, {
+        type: 5,
+        manufacturer: 255,
+        product: 1,
+        serialNumber: (Date.now() >>> 0),
+        timeCreated: fitDateTimeSeconds(now)
+      });
+      writer.define(1, 26, workoutFields);
+      writer.data(1, workoutFields, {
+        sport: 10,
+        numValidSteps: steps.length,
+        workoutName,
+        subSport: 20
+      });
+      writer.define(2, 27, workoutStepFields);
+      steps.forEach(step => writer.data(2, workoutStepFields, {
+        messageIndex: step.messageIndex,
+        stepName: step.stepName,
+        durationType: 29,
+        durationValue: step.reps,
+        targetType: 2,
+        targetValue: 0,
+        intensity: 0,
+        notes: step.note,
+        exerciseCategory: 65534,
+        exerciseNameId: step.exerciseNameId,
+        exerciseWeight: step.exerciseWeight
+      }));
+      writer.define(3, 264, exerciseTitleFields);
+      titles.forEach(title => writer.data(3, exerciseTitleFields, {
+        messageIndex: title.messageIndex,
+        exerciseCategory: 65534,
+        exerciseNameId: title.exerciseNameId,
+        exerciseName: title.exerciseName
+      }));
+
+      const dataBytes = Uint8Array.from(writer.bytes);
+      const header = new Uint8Array(14);
+      header[0] = 14;
+      header[1] = 16;
+      header[2] = 0x7b;
+      header[3] = 0x08;
+      header[4] = dataBytes.length & 0xff;
+      header[5] = (dataBytes.length >>> 8) & 0xff;
+      header[6] = (dataBytes.length >>> 16) & 0xff;
+      header[7] = (dataBytes.length >>> 24) & 0xff;
+      header[8] = 0x2e;
+      header[9] = 0x46;
+      header[10] = 0x49;
+      header[11] = 0x54;
+      const headerCrc = fitCrc(header.slice(0, 12));
+      header[12] = headerCrc & 0xff;
+      header[13] = (headerCrc >> 8) & 0xff;
+
+      const output = new Uint8Array(header.length + dataBytes.length + 2);
+      output.set(header, 0);
+      output.set(dataBytes, header.length);
+      const fileCrc = fitCrc(output.slice(0, header.length + dataBytes.length));
+      output[output.length - 2] = fileCrc & 0xff;
+      output[output.length - 1] = (fileCrc >> 8) & 0xff;
+      return output;
+    }
+
+    function downloadBlob(bytes, fileName) {
+      const blob = new Blob([bytes], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 250);
+    }
+
+    function downloadSelectedFitWorkout() {
+      try {
+        const group = selectedFitWorkoutGroup();
+        if (!group) throw new Error("No workout is selected.");
+        const bytes = buildFitWorkoutFile(group);
+        const fileName = `${fitSafeFileName(`${group.localDate || "vitruvian"}-${group.routineName || "workout"}`)}.fit`;
+        downloadBlob(bytes, fileName);
+        fitExportNote.textContent = `Created ${group.setCount} step FIT workout: ${fileName}`;
+      } catch (error) {
+        fitExportNote.textContent = `FIT export failed: ${error.message}`;
+      }
+    }
+
     function applyDashboardData(nextData, { fileName = "", resetExercise = false } = {}) {
       DATA = nextData;
       dashboardDataVersion += 1;
@@ -4116,9 +4532,11 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       if (fileName) state.uploadedFileName = fileName;
       if (resetExercise) {
         state.exerciseId = ALL_EXERCISES_ID;
+        state.fitWorkoutId = "";
         state.dimmedOverlayDates = new Set();
       }
       populateExerciseSelect();
+      populateFitWorkoutSelect();
       syncExerciseSelects();
       updateUploadButtonLabel();
       render();
@@ -4132,8 +4550,9 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         const text = await file.text();
         const raw = JSON.parse(text);
         const nextData = buildDashboardData(raw);
+        cachedUploadText = text;
         applyDashboardData(nextData, { fileName: file.name, resetExercise: true });
-        window.setTimeout(() => saveDashboardCache({ includeData: true }), 0);
+        await saveDashboardCache({ includeData: true });
       } catch (error) {
         sourceMeta.textContent = `Could not load ${file.name}: ${error.message}`;
       } finally {
@@ -4142,23 +4561,31 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     }
 
     async function restoreIndexedDbDashboardData() {
-      if (cachedDashboard?.data) {
-        updateUploadButtonLabel();
-        return;
-      }
       try {
         const cached = await readDashboardIndexedDbData();
-        const cachedData = validCachedDashboardData(cached?.data);
+        const uploadText = cachedUploadTextFromRecord(cached);
+        const cachedData = validCachedDashboardData(cached?.data) || dashboardDataFromUploadText(uploadText);
         if (!cachedData) {
-          state.uploadedFileName = "";
+          if (!cachedDashboard?.data) {
+            cachedUploadText = "";
+            state.uploadedFileName = "";
+            saveDashboardCache();
+          }
           updateUploadButtonLabel();
-          saveDashboardCache();
           return;
         }
+        const localCacheTime = cacheTimeValue(cachedDashboard?.savedAt);
+        const indexedDbCacheTime = cacheTimeValue(cached?.savedAt);
+        if (cachedDashboard?.data && localCacheTime && (!indexedDbCacheTime || indexedDbCacheTime < localCacheTime)) {
+          updateUploadButtonLabel();
+          return;
+        }
+        cachedUploadText = uploadText || cachedUploadText;
         const fileName = cached?.source?.fileName || state.uploadedFileName || "";
         applyDashboardData(cachedData, { fileName });
-        saveDashboardCache();
+        saveDashboardCache({ includeData: Boolean(uploadText) });
       } catch (error) {
+        updateUploadButtonLabel();
         // IndexedDB is optional; localStorage and bundled data remain usable.
       }
     }
@@ -4239,6 +4666,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       applyFilterCollapseState();
       applyTheme();
       updateUploadButtonLabel();
+      populateFitWorkoutSelect();
       ribbonToggle.addEventListener("click", () => {
         ribbonAutoCollapsePausedUntil = Date.now() + 450;
         state.ribbonCollapsed = !state.ribbonCollapsed;
@@ -4298,6 +4726,12 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       backupFileInput.addEventListener("change", event => {
         loadBackupFile(event.target.files?.[0]);
       });
+      fitWorkoutSelect.addEventListener("change", () => {
+        state.fitWorkoutId = fitWorkoutSelect.value;
+        populateFitWorkoutSelect();
+        saveDashboardCache();
+      });
+      fitDownloadButton.addEventListener("click", downloadSelectedFitWorkout);
       historyWindowSelects.forEach(select => {
         select.addEventListener("change", () => {
           state.historyWindow = select.value;
@@ -4466,6 +4900,42 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
           const energy = Number(trace.totalEnergyJ);
           return Number.isFinite(energy) ? sum + energy : sum;
         }, 0);
+    }
+
+    function rowsForEnergyChart(rows) {
+      const sourceRows = isAllExercises() ? allRowsForExercise() : rows;
+      const activeWorkoutExerciseKeys = new Set(sourceRows.map(row => `${row.workoutId}::${row.exerciseId}`));
+      const rowByKey = new Map(sourceRows.map(row => [`${row.workoutId}::${row.exerciseId}`, row]));
+      const byDate = new Map();
+
+      DATA.repTraces.forEach(trace => {
+        const key = `${traceWorkoutId(trace)}::${trace.exerciseId}`;
+        if (!activeWorkoutExerciseKeys.has(key)) return;
+        const energy = Number(trace.totalEnergyJ);
+        if (!Number.isFinite(energy)) return;
+        const row = rowByKey.get(key);
+        const date = trace.date || row?.localDate || "";
+        if (!date) return;
+        if (!byDate.has(date)) {
+          byDate.set(date, {
+            localDate: date,
+            label: date,
+            timestamp: Number(row?.timestamp ?? Number.POSITIVE_INFINITY),
+            totalEnergyJ: 0
+          });
+        }
+        const entry = byDate.get(date);
+        entry.totalEnergyJ += energy;
+        const timestamp = Number(row?.timestamp);
+        if (Number.isFinite(timestamp)) entry.timestamp = Math.min(entry.timestamp, timestamp);
+      });
+
+      const energyRows = [...byDate.values()]
+        .map(row => ({ ...row, totalEnergyKJ: row.totalEnergyJ / 1000 }))
+        .sort((a, b) => a.timestamp - b.timestamp || String(a.localDate).localeCompare(String(b.localDate)));
+      return isAllExercises() && state.historyWindow !== "all"
+        ? energyRows.slice(-Number(state.historyWindow))
+        : energyRows;
     }
 
     function renderKpis(rows) {
@@ -4740,6 +5210,53 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       ctx.fillRect(box.left + 92, height - 17, 12, 3);
       ctx.fillStyle = mutedColor();
       ctx.fillText("Est. 1RM", box.left + 110, height - 22);
+      setChartHitAreas(canvas, hitItems);
+    }
+
+    function drawEnergyBars(canvas, rows) {
+      if (!rows.length) {
+        drawEmpty(canvas, "No energy data for this selection.");
+        return;
+      }
+      const { ctx, width, height } = canvasSetup(canvas);
+      const box = { left: 62, right: width - 22, top: 18, bottom: height - 44 };
+      const maxEnergy = Math.max(...rows.map(row => Number(row.totalEnergyKJ || 0)), 1);
+      const yScale = scaleLinear(0, maxEnergy * 1.16, box.bottom, box.top);
+      const xScale = scaleLinear(0, Math.max(rows.length - 1, 1), box.left, box.right);
+      const yTicks = [0, 0.25, 0.5, 0.75, 1].map(part => {
+        const value = maxEnergy * 1.16 * part;
+        return { y: yScale(value), label: fmtNumber(value, 1) };
+      });
+      drawAxes(ctx, box, yTicks, "energy (kJ)");
+
+      const barWidth = Math.max(4, Math.min(28, (box.right - box.left) / rows.length * 0.52));
+      const hitItems = [];
+      ctx.fillStyle = "rgba(14, 116, 144, 0.34)";
+      rows.forEach((row, idx) => {
+        const x = xScale(idx) - barWidth / 2;
+        const y = yScale(Number(row.totalEnergyKJ || 0));
+        ctx.fillRect(x, y, barWidth, box.bottom - y);
+        hitItems.push({
+          x: x + barWidth / 2,
+          y: y + (box.bottom - y) / 2,
+          bounds: { left: x, right: x + barWidth, top: y, bottom: box.bottom },
+          lines: [
+            chartRowLabel(row),
+            "Total energy",
+            fmtEnergy(row.totalEnergyJ, 1)
+          ]
+        });
+      });
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = mutedColor();
+      ctx.font = "11px Segoe UI, Arial";
+      const labelStep = Math.max(1, Math.ceil(rows.length / 6));
+      rows.forEach((row, idx) => {
+        if (idx % labelStep === 0 || idx === rows.length - 1) ctx.fillText(row.localDate.slice(5), xScale(idx), box.bottom + 12);
+      });
+
       setChartHitAreas(canvas, hitItems);
     }
 
@@ -5805,6 +6322,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
     function renderSummaryTab(rows) {
       const repsRows = rowsForRepsChart();
       const volumeRows = rowsForVolumeChart();
+      const energyRows = rowsForEnergyChart(rows);
       const windowLabel = state.historyWindow === "all" ? "all workouts" : `last ${state.historyWindow} workouts`;
       document.getElementById("repsChartNote").textContent = isAllExercises()
         ? "Sum of all working reps across all exercises in each workout."
@@ -5812,6 +6330,9 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
       document.getElementById("volumeChartNote").textContent = isAllExercises()
         ? "Daily total volume across all exercises; red line shows the best estimated 1RM that day."
         : "Volume bars with estimated 1RM trend from completed working sets.";
+      document.getElementById("energyChartNote").textContent = isAllExercises()
+        ? "Daily total energy across all exercises from completed working reps."
+        : "Daily total energy from completed working reps for the selected exercise.";
       document.getElementById("loadProgressionNote").textContent =
         `Showing ${loadUnitLabel()} for ${windowLabel}, with incomplete and zero-rep sessions excluded.`;
       renderKpis(rows);
@@ -5856,6 +6377,7 @@ def dashboard_html(data_json: str, muscle_map_json: str, refined_muscle_map_json
         series: loadSeries
       });
       drawBarLine(document.getElementById("volumeChart"), volumeRows);
+      drawEnergyBars(document.getElementById("energyChart"), energyRows);
       drawLineSeries(document.getElementById("velocityChart"), rows.filter(row => row.avgMcvMmS !== null), {
         yLabel: "mm/s",
         zeroBase: false,
